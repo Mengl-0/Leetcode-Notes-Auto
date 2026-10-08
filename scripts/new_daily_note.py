@@ -23,7 +23,7 @@ def create_daily_note(date_str: str = None):
     else:
         date_str = datetime.now().strftime(DATE_FORMAT)
 
-    filename = f"{date_str} 刷题记录.md"
+    filename = f"{date_str}.md"
     full_path = os.path.join(NOTES_DAILY_PATH, filename)
 
     if os.path.exists(full_path):

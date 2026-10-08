@@ -5,9 +5,10 @@
 - 禁止把真实 AccessKey 硬编码写入本文件并提交 GitHub
 """
 import os
+from pathlib import Path
 
-# 项目根目录
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 项目根目录：一律由 Path(__file__) 推导，禁止硬编码绝对路径
+BASE_DIR = str(Path(__file__).resolve().parent.parent)
 
 # 笔记存放路径
 NOTES_DAILY_PATH = os.path.join(BASE_DIR, "notes", "daily")

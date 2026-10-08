@@ -3,21 +3,21 @@ config/secret.py
 config/.env
 .env
 
-# 本地临时图片（图床已上传 OSS，无需入库）
-assets/
+# 本地临时图片（图床走 OSS，不入库；保留 .gitkeep 占位）
+assets/*
 !assets/.gitkeep
 
 # Python 缓存
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-env/
-venv/
-.venv/
+*.py[cod]
+
+# 日志
+logs/
 
 # 编辑器/系统缓存
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# 注意：NOTES_INDEX.md 虽为自动生成，但需要保留在 Git 中，不要加入本文件

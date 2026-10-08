@@ -4,8 +4,8 @@
 
 ## 📅 每日打卡笔记
 
-- [2026-10-08 刷题记录](notes/daily/2026-10-08 刷题记录.md)
+- [2026-10-08](notes/daily/2026-10-08.md)
 
 ## 🧗 单题题解
 
-- [1_两数之和](notes/problems/1_两数之和.md)
+- [0001-two-sum](notes/problems/0001-two-sum.md)

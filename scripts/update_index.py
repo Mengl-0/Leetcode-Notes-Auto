@@ -23,9 +23,10 @@ def regenerate_index():
     """重新生成 NOTES_INDEX.md 索引文件"""
     daily = _collect(NOTES_DAILY_PATH)
     problems = _collect(NOTES_PROBLEM_PATH)
+    # 命名规范：0001-two-sum.md，按 4 位题号排序
     problems_sorted = sorted(
         problems,
-        key=lambda f: (int(f.split("_")[0]) if f.split("_")[0].isdigit() else 10**9, f),
+        key=lambda f: (int(f.split("-")[0]) if f.split("-")[0].isdigit() else 10**9, f),
     )
 
     lines = ["# 刷题笔记索引", "", f"> 自动生成，请勿手动编辑。共 {len(daily)} 篇每日打卡、{len(problems_sorted)} 篇题解。", ""]

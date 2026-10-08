@@ -1,7 +1,7 @@
 # LeetCode-Notes-Auto 刷题自动化知识库系统（项目方案文档）
 
 > 文档用途：项目设计文档、开发任务清单、实现状态记录、简历项目说明素材
-> 当前状态：**阶段 1～4 已全部实现并通过本地验证**（2026-10-08 完成代码优化与补全）
+> 当前状态：**阶段 1～4 已全部实现并通过本地验证；2026-10-08 完成结构规范化改造**（命名、目录、卫生、自动生成文件四类规范落地，见第 12 节）
 
 ---
 
@@ -41,28 +41,32 @@ LeetCode-Notes-Auto：刷题自动化知识库系统
 
 ## 3. 项目目录结构（与实际代码一致）
 
+命名规范：文件/目录名一律全英文小写、连字符 `-` 分隔，禁止空格、中文、括号；每日笔记 `YYYY-MM-DD.md`；题解笔记 `NNNN-english-slug.md`（如 `0001-two-sum.md`）。依赖方向单向：`scripts/ → core/ → config/`。
+
 ```text
 leetcode-notes-auto/
 ├─ main.py                 # 程序总入口（命令行菜单，调度所有功能）
 ├─ README.md               # 项目介绍文档（GitHub 仓库首页）
-├─ NOTES_INDEX.md          # 自动生成的笔记目录索引
-├─ .gitignore              # 忽略密钥、临时图片、缓存
+├─ NOTES_INDEX.md          # 自动生成的笔记目录索引（保留在 Git，勿手改）
+├─ .gitignore              # 忽略密钥、临时图片、缓存、日志
+├─ docs/
+│   └─ project-plan.md     # 本方案文档（设计、任务清单、优化记录）
 ├─ config/
 │   └─ settings.py         # 路径、OSS、日期格式配置（密钥走环境变量/本地密钥文件）
-├─ core/
+├─ core/                   # 核心模块（只依赖 config/）
 │   ├─ md_template.py      # Markdown 模板生成（每日打卡 / 单题题解）
 │   ├─ oss_upload.py       # OSS 上传 + md 图片链接替换核心模块
 │   └─ git_auto.py         # git add/commit/push 封装模块
-├─ scripts/                # 独立功能脚本（均可单跑，也可被 main.py 调度）
-│   ├─ new_daily_note.py   # 新建每日刷题打卡笔记
-│   ├─ new_problem.py      # 新建单题题解笔记
+├─ scripts/                # 功能脚本（依赖 core/ 与 config/，可单跑也可被 main.py 调度）
+│   ├─ new_daily_note.py   # 新建每日刷题打卡笔记（YYYY-MM-DD.md）
+│   ├─ new_problem.py      # 新建单题题解笔记（NNNN-english-slug.md）
 │   ├─ upload_img.py       # 单张/批量图片上传、扫描 md 替换链接
 │   ├─ update_index.py     # 扫描笔记生成 NOTES_INDEX.md 目录索引
 │   └─ auto_sync.py        # 一键全量同步：上传+替换+索引+git 推送
 ├─ notes/
 │   ├─ daily/              # 每日打卡笔记存放目录
 │   └─ problems/           # 单题详细题解文档目录
-└─ assets/                 # 本地截图/图片临时文件夹（已 gitignore）
+└─ assets/                 # 本地截图/图片临时文件夹（已 gitignore，仅保留 .gitkeep）
 ```
 
 ## 4. 功能详细设计（分阶段迭代）
@@ -74,8 +78,8 @@ leetcode-notes-auto/
 3. `core/md_template.py` 模板引擎：内置两套 Markdown 模板
    - 模板 A：每日刷题打卡模板（今日完成题目表格、知识点收获、踩坑记录、后续计划、总结）
    - 模板 B：单题算法题解模板（题号、题目描述、思路分析、Python 代码、Go 代码、复杂度、踩坑、收获、复盘记录表）
-4. `scripts/new_daily_note.py`：默认生成今日 `yyyy-mm-dd 刷题记录.md` 到 notes/daily，也支持命令行传入指定日期；重复生成时提示已存在。
-5. `scripts/new_problem.py`：输入题号、题目名称，自动生成单题题解 md 文档到 notes/problems；自动过滤文件名非法字符。
+4. `scripts/new_daily_note.py`：默认生成今日 `YYYY-MM-DD.md` 到 notes/daily，也支持命令行传入指定日期；重复生成时提示已存在。
+5. `scripts/new_problem.py`：输入题号（数字）与英文 slug（如 `two-sum`），自动生成 `NNNN-english-slug.md`（如 `0001-two-sum.md`）到 notes/problems；slug 自动规范为小写连字符，标题可另填用于文档首行。
 
 ### 阶段 2：图床自动化模块 ✅ 已完成
 
@@ -126,8 +130,8 @@ leetcode-notes-auto/
 | core/md_template.py | 存放 Markdown 模板，对外提供函数，直接生成完整笔记文本 | ✅ |
 | core/oss_upload.py | 核心模块：图片上传、返回线上链接、替换 md 文档图片地址 | ✅ |
 | core/git_auto.py | 封装 git 操作，自动检测文件变更，执行提交推送，异常友好提示 | ✅ |
-| scripts/new_daily_note.py | 创建每日刷题打卡笔记文件，支持指定日期 | ✅ |
-| scripts/new_problem.py | 创建单道 LeetCode 题解文档，文件名非法字符过滤 | ✅ |
+| scripts/new_daily_note.py | 创建每日刷题打卡笔记文件（YYYY-MM-DD.md），支持指定日期 | ✅ |
+| scripts/new_problem.py | 创建单道 LeetCode 题解文档（NNNN-english-slug.md），slug 规范化校验 | ✅ |
 | scripts/upload_img.py | 独立图片上传工具：单张 / 批量 / 全量 md 链接替换 | ✅ |
 | scripts/update_index.py | 扫描笔记目录，自动生成 NOTES_INDEX.md 导航索引 | ✅ |
 | scripts/auto_sync.py | 一键全流程同步：图片上传 + 链接替换 + 索引更新 + git 推送 | ✅ |
@@ -144,7 +148,7 @@ leetcode-notes-auto/
 
 1. 运行 `python main.py`，打开主菜单
 2. 选择【1. 新建今日笔记】，自动生成当日打卡 md
-3. 选择【2. 新建题目笔记】，输入题号名称，生成题解模板文档
+3. 选择【2. 新建题目笔记】，输入题号与英文 slug，生成 `0001-two-sum.md` 式题解模板文档
 4. 在文档内写题解、粘贴截图到 assets 文件夹
 5. 选择【3. 上传图片并替换文档链接】自动上传所有截图，替换本地图片地址
 6. 选择【4. 一键同步 GitHub】自动上传 + 替换 + 更新索引 + 提交推送
@@ -195,7 +199,7 @@ leetcode-notes-auto/
 |---|---|---|
 | 1 | `core/oss_upload.py` 为空文件，上传与链接替换功能整体缺失 | 完整实现上传、md 扫描替换、路径解析、哈希去重、异常兜底 |
 | 2 | `core/md_template.py` 题解模板中途截断（代码块未闭合、缺 Go 代码/复杂度/复盘区） | 补全每日打卡与单题题解双模板 |
-| 3 | `scripts/new_problen.py` 文件名拼写错误，main.py 引用的 `new_problem.py` 不存在 | 重建为 `new_problem.py`（旧错名文件已无引用，可确认后删除） |
+| 3 | `scripts/new_problen.py` 文件名拼写错误，main.py 引用的 `new_problem.py` 不存在 | 重建为 `new_problem.py`，旧错名文件已移入回收站 |
 | 4 | `scripts/*` 以脚本直跑时 `from config...` 导入失败（sys.path 无项目根） | 各脚本内置项目根路径引导，单跑/菜单两种方式均可用 |
 | 5 | `config/settings.py` 的 bucket 为占位符且无校验，密钥来源单一 | 环境变量 > secret.py/.env 分层读取，新增 `validate_oss_config` 缺失项校验 |
 | 6 | `core/git_auto.py` 使用 shell=True 拼接提交信息，含引号会失效且有注入风险；「无变更」误判脆弱 | 改参数化调用；以暂存区 diff 准确判断变更；补充无上游分支与失败原因提示 |
@@ -205,6 +209,30 @@ leetcode-notes-auto/
 | 10 | `.gitignore` 对 assets 忽略不完整、编辑器忽略项含路径笔误 | 整体忽略 assets（保留 .gitkeep），修正 `.vscode`、补充 `.idea`、`Thumbs.db` |
 
 验证结果：全模块编译通过；菜单入口、单脚本直跑、指定日期建笔记、非法文件名过滤、链接替换解析（缺失文件与线上链接均正确跳过）、索引生成、git 变更检测、密钥缺失友好提示——均已本地实测通过。真实 OSS 上传与 GitHub 推送需配置密钥/远程仓库后联调。
+
+## 12. 结构规范化改造记录（2026-10-08）
+
+按命名、目录、卫生、自动生成文件四类规范完成改造：
+
+**命名规范**
+- 笔记文件名全部改为英文规范：每日笔记 `YYYY-MM-DD.md`（原「2026-10-08 刷题记录.md」已迁移为「2026-10-08.md」）；题解笔记 4 位补零编号 + 英文 slug（原「1_两数之和.md」已迁移为「0001-two-sum.md」）。
+- 分隔符统一为连字符 `-`，笔记文件名不再含空格、中文、括号；文档标题仍可用中文（写在 md 内容首行）。
+- `new_problem.py` 改为输入题号+英文 slug（可另填中文标题），内置 slug 规范化与校验。
+
+**目录规范**
+- 项目文档统一放入 `docs/`（方案文档移至 `docs/project-plan.md`）。
+- 依赖保持单向 `scripts/ → core/ → config/`，core/config 不反向引用上层。
+- 一级目录复核：无拼写错误目录（不存在 asserts）、无空目录（assets 以 .gitkeep 占位）。
+
+**卫生规范**
+- 清理全部 `__pycache__/` 与 `*.pyc`（共 4 处缓存目录）。
+- `.gitignore` 补齐 `__pycache__/`、`*.py[cod]`、`logs/`，并修正 assets 忽略方式（`assets/*` + `!assets/.gitkeep`）。
+- 路径统一由 `Path(__file__)` 推导（`config/settings.py` 的 BASE_DIR 已改造），无硬编码绝对路径。
+
+**自动生成文件**
+- `NOTES_INDEX.md` 保留在 Git（已在 .gitignore 注释说明勿加入忽略），README 与本方案文档均注明「自动生成，勿手改」。
+
+**遗留提示**：项目根目录之外（盘面上层）的旧方案文档副本 `LeetCode-Notes-Auto 刷题自动化知识库系统（项目方案文档）.md` 内容已过时，规范版以 `docs/project-plan.md` 为准；是否需要删除请用户确认。
 
 ---
 
