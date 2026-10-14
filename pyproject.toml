@@ -1,0 +1,22 @@
+[project]
+name = "leetcode-notes-auto"
+version = "0.1.0"
+description = "LeetCode 刷题自动化知识库：笔记模板 / OSS 图床 / AI 增强 / RAG 私有问答"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [{ name = "Mengl-0" }]
+keywords = ["leetcode", "notes", "rag", "deepseek", "automation"]
+
+# 核心依赖均为可选增强，缺失时安全降级；不强制安装
+dependencies = []
+
+[project.optional-dependencies]
+oss = ["oss2>=2.18.0"]
+local-embedding = ["sentence-transformers>=2.2.0"]
+dev = ["pytest>=7.0", "pytest-cov>=4.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-v --tb=short"
