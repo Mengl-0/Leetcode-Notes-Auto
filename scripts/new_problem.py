@@ -10,7 +10,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.settings import NOTES_PROBLEM_PATH
+from config.settings import NOTES_PROBLEM_PATH, init_dir
 from core.md_template import get_problem_template
 
 
@@ -30,7 +30,7 @@ def build_filename(pid: str, slug: str) -> str:
     return f"{int(pid):04d}-{slug}.md"
 
 
-def create_problem_note(pid: str, slug_raw: str, title: str = ""):
+def create_problem_note(pid: str, slug_raw: str, title: str = "") -> "str | None":
     slug = slugify(slug_raw)
     try:
         filename = build_filename(pid.strip(), slug)
@@ -51,14 +51,20 @@ def create_problem_note(pid: str, slug_raw: str, title: str = ""):
     return full_path
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """供 main.py 进程内调用的入口（审计问题 4），交互输入题号 / slug / 标题"""
+    init_dir()
     try:
         pid = input("请输入LeetCode题号（数字）：").strip()
         slug = input("请输入英文slug（小写连字符，如 two-sum）：").strip()
         title = input("请输入文档标题（中/英文均可，回车默认用slug）：").strip()
         if not pid or not slug:
             print("❌ 题号和 slug 不能为空")
-            sys.exit(1)
+            return
         create_problem_note(pid, slug, title)
     except KeyboardInterrupt:
         print("\n⏹️ 已取消")
+
+
+if __name__ == "__main__":
+    run()

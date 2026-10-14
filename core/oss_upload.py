@@ -24,7 +24,7 @@ logger = get_logger("oss")
 MD_IMG_PATTERN = re.compile(r'(!\[[^\]]*\]\()\s*<?([^)\s]+?)>?(?:\s+[^)]*)?(\))')
 
 
-def _oss_enabled():
+def _oss_enabled() -> bool:
     """检查 oss2 SDK 是否可用；不可用则提示安装方式"""
     try:
         import oss2  # noqa: F401
@@ -34,7 +34,7 @@ def _oss_enabled():
         return False
 
 
-def _get_bucket():
+def _get_bucket() -> "object | None":
     """创建 OSS Bucket 连接对象，配置缺失时返回 None"""
     missing = validate_oss_config()
     if missing:
@@ -63,7 +63,7 @@ def _build_remote_key(local_path: str) -> str:
     return f"{prefix}{digest}_{fname}"
 
 
-def upload_file(local_path: str):
+def upload_file(local_path: str) -> "str | None":
     """
     上传单张图片到 OSS，返回线上访问链接；失败返回 None
     远端 key 规则：<prefix><文件内容sha1前8位>_<原文件名>，同图去重、避免覆盖
@@ -92,7 +92,7 @@ def upload_file(local_path: str):
         return None
 
 
-def _resolve_local_path(md_path: str, img_src: str):
+def _resolve_local_path(md_path: str, img_src: str) -> "str | None":
     """把 md 中的图片引用解析为本地绝对路径；解析不出（已是线上链接等）返回 None"""
     if img_src.startswith(("http://", "https://", "data:")):
         return None
@@ -108,10 +108,13 @@ def _resolve_local_path(md_path: str, img_src: str):
     return None
 
 
-def replace_img_in_md(md_path: str):
+def replace_img_in_md(md_path: str, url_cache: dict | None = None) -> int:
     """
     扫描单个 md 文件，把 ![xxx](本地路径) 的图片上传 OSS 并替换为线上链接
-    返回替换次数
+    :param url_cache: 可选的 {本地绝对路径: 线上链接} 共享缓存（审计问题 1）。
+        上游已批量上传过的图片直接复用链接，不再二次上传；
+        失败的图片会以 None 记入缓存，同一批次内也不重复尝试。
+    :return: 替换次数
     """
     if not os.path.exists(md_path):
         print(f"❌ md 文件不存在：{md_path}")
@@ -119,7 +122,7 @@ def replace_img_in_md(md_path: str):
     with open(md_path, "r", encoding="utf-8") as f:
         text = f.read()
 
-    url_cache = {}
+    cache = url_cache if url_cache is not None else {}
     replaced = [0]
 
     def _sub(m):
@@ -127,9 +130,10 @@ def replace_img_in_md(md_path: str):
         local = _resolve_local_path(md_path, src)
         if not local:
             return m.group(0)
-        if local not in url_cache:
-            url_cache[local] = upload_file(local)
-        url = url_cache[local]
+        local = os.path.abspath(local)
+        if local not in cache:
+            cache[local] = upload_file(local)
+        url = cache[local]
         if not url:
             print(f"⚠️ 图片 {os.path.basename(local)} 上传失败，保留原链接")
             return m.group(0)

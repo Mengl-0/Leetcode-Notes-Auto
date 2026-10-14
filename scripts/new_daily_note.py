@@ -9,11 +9,11 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.settings import NOTES_DAILY_PATH, DATE_FORMAT
+from config.settings import NOTES_DAILY_PATH, DATE_FORMAT, init_dir
 from core.md_template import get_daily_note_template
 
 
-def create_daily_note(date_str: str = None):
+def create_daily_note(date_str: str | None = None) -> str | None:
     if date_str:
         try:
             date_str = datetime.strptime(date_str, DATE_FORMAT).strftime(DATE_FORMAT)
@@ -37,6 +37,12 @@ def create_daily_note(date_str: str = None):
     return full_path
 
 
+def run(date_str: str | None = None) -> str | None:
+    """供 main.py 进程内调用的入口（审计问题 4）；目录初始化显式执行（审计问题 11）"""
+    init_dir()
+    return create_daily_note(date_str)
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else None
-    create_daily_note(arg)
+    run(arg)

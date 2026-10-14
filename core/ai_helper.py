@@ -13,6 +13,7 @@ AI 增强模块（二期）
 未配置密钥或未联网时给出友好提示并安全降级，不抛异常中断主流程。
 """
 import json
+import time
 import urllib.error
 import urllib.request
 
@@ -21,13 +22,25 @@ from core.logger import get_logger
 
 logger = get_logger("ai")
 
+# 网络抖动 / 服务端 5xx 时自动重试的次数与间隔（审计问题 5）
+_MAX_RETRIES = 2
+_RETRY_INTERVAL = 2.0
+
+
+class TransientError(RuntimeError):
+    """临时性错误（网络异常、5xx、429），可自动重试"""
+
+
+class PermanentError(RuntimeError):
+    """永久性错误（鉴权失败、参数错误、响应解析失败），重试无意义"""
+
 
 def is_configured() -> bool:
     """DeepSeek 是否已正确配置（密钥非占位）"""
     return not validate_deepseek_config()
 
 
-def _print_missing():
+def _print_missing() -> None:
     missing = validate_deepseek_config()
     print("❌ DeepSeek 配置不完整，缺少：")
     for m in missing:
@@ -35,10 +48,60 @@ def _print_missing():
     print("💡 请设置环境变量 DEEPSEEK_API_KEY，或复制 config/config.example.env 为 config/secret.env 后填写")
 
 
-def chat(system_prompt: str, user_prompt: str) -> str:
+def _is_transient(status_code: int) -> bool:
+    """5xx 与 429 视为可重试的临时错误；4xx（鉴权/参数错误）重试无意义"""
+    return status_code >= 500 or status_code == 429
+
+
+def _chat_once(url: str, data: bytes) -> str:
     """
-    调用 DeepSeek /chat/completions，返回模型回复文本；失败返回 None
-    使用标准库 urllib，避免引入 openai 等第三方依赖。
+    单次调用 DeepSeek，成功返回回复文本。
+    临时性错误（网络异常 / 5xx / 429）抛 RuntimeError 供上层重试；
+    其它错误抛 RuntimeError 且标记不可重试。
+    """
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_CONFIG['api_key']}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=DEEPSEEK_CONFIG["timeout"]) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8", errors="replace")[:500]
+        except Exception:
+            pass
+        logger.error("DeepSeek HTTPError %s：%s", e.code, detail)
+        msg = f"接口返回错误 HTTP {e.code}：{detail or e.reason}"
+        if _is_transient(e.code):
+            raise TransientError(msg) from e
+        raise PermanentError(msg) from e
+    except urllib.error.URLError as e:
+        logger.error("DeepSeek URLError：%s", e.reason)
+        raise TransientError(f"无法连接 DeepSeek 服务（网络异常）：{e.reason}") from e
+    except TimeoutError as e:
+        logger.error("DeepSeek 请求超时：%s", e)
+        raise TransientError("请求超时") from e
+    try:
+        content = body["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        logger.error("DeepSeek 响应解析失败：%s", e, exc_info=True)
+        raise PermanentError(f"DeepSeek 返回内容解析失败：{e}") from e
+    logger.info("DeepSeek 调用成功，model=%s，返回 %d 字符", DEEPSEEK_CONFIG["model"], len(content))
+    return content
+
+
+def chat(system_prompt: str, user_prompt: str) -> "str | None":
+    """
+    调用 DeepSeek /chat/completions，返回模型回复文本；失败返回 None。
+    网络异常 / 5xx / 429 自动重试最多 2 次，间隔 2s（审计问题 5）；
+    鉴权失败、参数错误等永久性错误不重试，直接提示。
     """
     if not is_configured():
         _print_missing()
@@ -55,42 +118,26 @@ def chat(system_prompt: str, user_prompt: str) -> str:
         ],
     }
     data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {DEEPSEEK_CONFIG['api_key']}",
-        },
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=DEEPSEEK_CONFIG["timeout"]) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-        content = body["choices"][0]["message"]["content"].strip()
-        logger.info("DeepSeek 调用成功，model=%s，返回 %d 字符", DEEPSEEK_CONFIG["model"], len(content))
-        return content
-    except urllib.error.HTTPError as e:
-        detail = ""
+
+    last_err = ""
+    for attempt in range(_MAX_RETRIES + 1):
         try:
-            detail = e.read().decode("utf-8", errors="replace")[:500]
-        except Exception:
-            pass
-        print(f"❌ DeepSeek 接口返回错误 HTTP {e.code}：{detail or e.reason}")
-        logger.error("DeepSeek HTTPError %s：%s", e.code, detail)
-        return None
-    except urllib.error.URLError as e:
-        print(f"❌ 无法连接 DeepSeek 服务（网络异常）：{e.reason}")
-        logger.error("DeepSeek URLError：%s", e.reason)
-        return None
-    except (KeyError, IndexError, json.JSONDecodeError) as e:
-        print(f"❌ DeepSeek 返回内容解析失败：{e}")
-        logger.error("DeepSeek 响应解析失败：%s", e, exc_info=True)
-        return None
-    except Exception as e:  # 兜底：超时等其它异常
-        print(f"❌ 调用 DeepSeek 失败：{e}")
-        logger.error("DeepSeek 调用异常：%s", e, exc_info=True)
-        return None
+            return _chat_once(url, data)
+        except TransientError as e:
+            last_err = str(e)
+            if attempt < _MAX_RETRIES:
+                print(f"⚠️ {last_err}，{int(_RETRY_INTERVAL)}s 后重试（{attempt + 1}/{_MAX_RETRIES}）...")
+                time.sleep(_RETRY_INTERVAL)
+        except PermanentError as e:
+            print(f"❌ {e}")
+            return None
+        except Exception as e:  # 兜底：未预期异常不重试，避免掩盖问题
+            print(f"❌ 调用 DeepSeek 失败：{e}")
+            logger.error("DeepSeek 调用异常：%s", e, exc_info=True)
+            return None
+
+    print(f"❌ DeepSeek 调用失败（已重试 {_MAX_RETRIES} 次）：{last_err}")
+    return None
 
 
 _BASE_SYSTEM = (
@@ -99,7 +146,7 @@ _BASE_SYSTEM = (
 )
 
 
-def analyze_problem(problem_text: str) -> str:
+def analyze_problem(problem_text: str) -> "str | None":
     """
     针对一道题的题解内容，生成思路梳理、复杂度分析、易错点提示
     :param problem_text: 题解 md 全文（或题目 + 代码片段）
@@ -115,7 +162,7 @@ def analyze_problem(problem_text: str) -> str:
     return chat(_BASE_SYSTEM, user)
 
 
-def summarize_daily(daily_text: str) -> str:
+def summarize_daily(daily_text: str) -> "str | None":
     """
     针对当日刷题笔记，生成收获总结与后续建议
     :param daily_text: 当日每日打卡 md 全文（可拼接多篇题解）
@@ -131,7 +178,7 @@ def summarize_daily(daily_text: str) -> str:
     return chat(_BASE_SYSTEM, user)
 
 
-def convert_py_to_go(py_code: str) -> str:
+def convert_py_to_go(py_code: str) -> "str | None":
     """把 Python 代码转换为等价 Go 代码"""
     if not py_code.strip():
         print("⚠️ Python 代码为空，无法转换")
@@ -144,7 +191,7 @@ def convert_py_to_go(py_code: str) -> str:
     return chat(_BASE_SYSTEM, user)
 
 
-def review_code(code: str, lang: str = "python") -> str:
+def review_code(code: str, lang: str = "python") -> "str | None":
     """代码 bug 检测与改进建议"""
     if not code.strip():
         print("⚠️ 代码为空，无法检查")

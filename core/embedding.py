@@ -70,7 +70,7 @@ def missing_hint() -> str:
     return ""
 
 
-def _normalize(vec):
+def _normalize(vec: "list[float]") -> "list[float]":
     """L2 归一化，使点积等价于余弦相似度"""
     norm = sum(x * x for x in vec) ** 0.5
     if norm == 0:
@@ -78,7 +78,7 @@ def _normalize(vec):
     return [x / norm for x in vec]
 
 
-def _tokenize(text: str):
+def _tokenize(text: str) -> "list[str]":
     """
     轻量分词：英文单词 + 中文单字 + 中文双字 + 字符 3-gram
     多粒度组合，兼顾代码标识符与中文语义的检索效果
@@ -98,7 +98,7 @@ def _idf_path() -> str:
     return os.path.join(VECTOR_STORE_PATH, "idf.json")
 
 
-def _load_idf():
+def _load_idf() -> "tuple[dict | None, int]":
     """加载已持久化的 IDF 权重；无缓存返回 (None, 0)"""
     global _IDF_STATE
     if _IDF_STATE is not None:
@@ -117,7 +117,7 @@ def _load_idf():
     return _IDF_STATE
 
 
-def _save_idf(df: dict, n: int):
+def _save_idf(df: dict, n: int) -> None:
     """持久化 IDF 权重，供后续查询复用同一套权重"""
     global _IDF_STATE
     try:
@@ -143,7 +143,7 @@ def _idf_weight(token: str, df: dict, n: int) -> float:
     return math.log(1.0 + n / cnt)
 
 
-def _hash_embed_one(text: str, dim: int, df: dict = None, n: int = 0):
+def _hash_embed_one(text: str, dim: int, df: "dict | None" = None, n: int = 0) -> "list[float]":
     """
     特征哈希 + TF-IDF 向量化单条文本（确定性、可复现）。
     df/n 提供时对每个 token 施加 IDF 权重，抑制高频虚词、突出区分性词汇。
@@ -159,7 +159,7 @@ def _hash_embed_one(text: str, dim: int, df: dict = None, n: int = 0):
     return _normalize(vec)
 
 
-def _hash_embed_corpus(texts, dim: int):
+def _hash_embed_corpus(texts: "list[str]", dim: int) -> "list[list[float]]":
     """
     语料模式：先统计各 token 的文档频率（DF），持久化 IDF，再加权向量化。
     建索引时调用，保证与后续查询处于同一套 IDF 权重下。
@@ -175,7 +175,7 @@ def _hash_embed_corpus(texts, dim: int):
     return [_hash_embed_one(t, dim, df, n) for t in texts]
 
 
-def _hash_embed_query(text: str, dim: int):
+def _hash_embed_query(text: str, dim: int) -> "list[float]":
     """
     查询模式：复用建索引时持久化的 IDF 权重。
     若尚无 IDF（用户未建索引就直接查），退化为无权重哈希，仍能工作。
@@ -184,7 +184,7 @@ def _hash_embed_query(text: str, dim: int):
     return _hash_embed_one(text, dim, df, n)
 
 
-def _st_embed(texts):
+def _st_embed(texts: "list[str]") -> "list[list[float]]":
     global _ST_MODEL
     from sentence_transformers import SentenceTransformer
 
@@ -196,7 +196,7 @@ def _st_embed(texts):
     return [list(map(float, v)) for v in vecs]
 
 
-def _api_embed(texts):
+def _api_embed(texts: "list[str]") -> "list[list[float]]":
     """调用 OpenAI 兼容 embedding 接口"""
     base = EMBEDDING_CONFIG["api_base"].rstrip("/")
     url = base + "/embeddings"
@@ -226,7 +226,7 @@ def _api_embed(texts):
         raise RuntimeError(f"无法连接 embedding 服务：{e.reason}") from e
 
 
-def embed_texts(texts):
+def embed_texts(texts: "list[str]") -> "list[list[float]]":
     """
     批量向量化（语料模式），返回与 texts 等长的向量列表；失败抛出 RuntimeError。
     hash provider 下会重新统计并持久化 IDF 权重——仅在构建索引时调用。
@@ -249,7 +249,7 @@ def embed_texts(texts):
     return _api_embed(texts)
 
 
-def embed_query(text: str):
+def embed_query(text: str) -> "list[float]":
     """
     查询文本向量化，返回单条向量。
     hash provider 下复用建索引时持久化的 IDF 权重，保证与索引同一向量空间。

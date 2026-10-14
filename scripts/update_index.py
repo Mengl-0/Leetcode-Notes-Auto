@@ -9,13 +9,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.settings import NOTES_DAILY_PATH, NOTES_PROBLEM_PATH, BASE_DIR
+from config.settings import NOTES_DAILY_PATH, NOTES_PROBLEM_PATH, BASE_DIR, init_dir
 
 INDEX_PATH = os.path.join(BASE_DIR, "NOTES_INDEX.md")
 _TITLE_RE = re.compile(r"^#\s+(.+?)\s*$")
 
 
-def _collect(dir_path: str):
+def _collect(dir_path: str) -> "list[str]":
     if not os.path.isdir(dir_path):
         return []
     return sorted(f for f in os.listdir(dir_path) if f.endswith(".md"))
@@ -36,13 +36,13 @@ def _read_title(path: str, fallback: str) -> str:
     return fallback
 
 
-def _problem_sort_key(fname: str):
+def _problem_sort_key(fname: str) -> "tuple[int, int, str]":
     """题解按 4 位题号排序，命名不规范的排在最后"""
     head = fname.split("-")[0]
     return (0, int(head), fname) if head.isdigit() else (1, 0, fname)
 
 
-def regenerate_index():
+def regenerate_index() -> str:
     """重新生成 NOTES_INDEX.md 索引文件"""
     # 每日笔记按日期倒序（最新在前），与 core/notes_io.list_daily_notes 保持一致
     daily = sorted(_collect(NOTES_DAILY_PATH), reverse=True)
@@ -78,5 +78,11 @@ def regenerate_index():
     return INDEX_PATH
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """供 main.py 进程内调用的入口（审计问题 4）"""
+    init_dir()
     regenerate_index()
+
+
+if __name__ == "__main__":
+    run()

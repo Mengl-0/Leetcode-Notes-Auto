@@ -21,7 +21,7 @@ LOCAL_TIMEOUT = 30
 PUSH_TIMEOUT = 120
 
 
-def _run_git(args, timeout: int = LOCAL_TIMEOUT):
+def _run_git(args: "list[str]", timeout: int = LOCAL_TIMEOUT) -> "subprocess.CompletedProcess | None":
     """在项目根目录执行 git 命令，返回 CompletedProcess；异常时返回 None"""
     try:
         return subprocess.run(
@@ -62,7 +62,7 @@ def get_current_branch() -> str:
     return ret.stdout.strip() if ret and ret.returncode == 0 else ""
 
 
-def get_change_summary():
+def get_change_summary() -> "list[str]":
     """返回当前变更文件列表（含未跟踪文件），无 git 环境返回空列表"""
     if not is_git_repo():
         return []
@@ -72,10 +72,41 @@ def get_change_summary():
     return [line[3:] for line in ret.stdout.splitlines() if line.strip()]
 
 
+def _try_pull_rebase_then_push() -> bool:
+    """
+    远程有新提交导致 push 被拒时，自动 git pull --rebase 并重试 push 一次（审计问题 7）。
+    rebase 出现真冲突时中止（git rebase --abort）恢复现场，提示用户手动处理。
+    """
+    print("🔄 远程有新提交，尝试自动 git pull --rebase ...")
+    rebase_ret = _run_git(["pull", "--rebase"], timeout=PUSH_TIMEOUT)
+    if rebase_ret is None:
+        return False
+    if rebase_ret.returncode != 0:
+        err = (rebase_ret.stderr or rebase_ret.stdout).strip()
+        logger.error("git pull --rebase 失败：%s", err)
+        print("⚠️ 自动变基失败（可能存在内容冲突），正在恢复原状态 ...")
+        abort_ret = _run_git(["rebase", "--abort"])
+        if abort_ret is not None and abort_ret.returncode != 0:
+            print("⚠️ git rebase --abort 未成功，仓库可能处于变基中间状态，请手动执行：git rebase --abort")
+        print("💡 本地提交已保留，请手动执行 git pull --rebase 解决冲突后重新同步")
+        return False
+
+    print("🚀 变基完成，重试 git push ...")
+    retry_ret = _run_git(["push"], timeout=PUSH_TIMEOUT)
+    if retry_ret is not None and retry_ret.returncode == 0:
+        print("✅ Git 提交并推送成功（自动变基后重试）！")
+        logger.info("自动 pull --rebase 后推送成功")
+        return True
+    err = (retry_ret.stderr or retry_ret.stdout).strip() if retry_ret else "未知错误"
+    print(f"❌ 重试推送仍失败：{err}")
+    logger.error("变基后重试 push 仍失败：%s", err)
+    return False
+
+
 def git_commit_and_push(commit_msg: str) -> bool:
     """
     执行 git add → commit → push
-    :return: True 表示有变更且推送成功；False 表示无需提交或推送失败
+    :return: True 表示有变更且推送成功（或仅本地提交成功）；False 表示无需提交或推送失败
     """
     if not is_git_repo():
         print("❌ 当前项目还不是 git 仓库，请先执行 git init 并配置远程仓库")
@@ -128,6 +159,9 @@ def git_commit_and_push(commit_msg: str) -> bool:
     if "no upstream" in low or "has no upstream" in low:
         print(f"⚠️ 分支 {branch} 没有上游远程分支，首次推送请手动执行：")
         print(f"   git push -u origin {branch}")
+    elif "rejected" in low or "fetch first" in low or "non-fast-forward" in low:
+        # 远程有新提交：自动 pull --rebase 后重试一次（审计问题 7）
+        return _try_pull_rebase_then_push()
     else:
         print(f"❌ Git 推送失败：{err}")
         print("💡 常见原因：网络异常 / 需要凭据认证 / 远程有新提交需先 pull")

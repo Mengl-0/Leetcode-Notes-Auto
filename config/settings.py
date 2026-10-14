@@ -20,12 +20,23 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Windows 下 Python 的标准输出/错误默认按本地代码页（GBK/cp936）编码、错误处理为
 # strict：一旦 print 到 emoji（如 ✅/🧮/📖）等代码页无法编码的字符，就会抛
-# UnicodeEncodeError 使程序崩溃。这里保留系统原有编码（保证中文在 GBK 终端正常显示，
-# UTF-8 终端也不受影响），仅把错误处理改为 replace（无法编码的字符降级为 '?'），
-# 从而既不崩溃也不乱码。所有脚本都会导入本模块，因此只需在此处与 main.py（打印菜单
-# 早于导入本模块）各兜底一次即可。
+# UnicodeEncodeError 使程序崩溃。分两种场景兜底：
+#   - 原生控制台（isatty 为真）：输出走宽字符 API，不经代码页编码，emoji 本就能正常
+#     显示，这里仅把错误处理改为 replace 防意外；
+#   - 重定向 / 伪终端（VS Code、Windows Terminal 捕获等，isatty 为假）：输出要先经
+#     编码层编码成字节，GBK 下 emoji 会被降级为 '?'。改按 UTF-8 输出，emoji 即可
+#     正常显示（旧版 Windows 7 等无 Unicode 终端环境仍可能无法显示）。
+# 所有脚本都会导入本模块，因此只需在此处与 main.py（打印菜单早于导入本模块）各兜底
+# 一次即可。
 for _stream in (sys.stdout, sys.stderr):
-    if _stream is not None and hasattr(_stream, "reconfigure"):
+    if _stream is None or not hasattr(_stream, "reconfigure"):
+        continue
+    try:
+        if _stream.isatty():
+            _stream.reconfigure(errors="replace")
+        else:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
         try:
             _stream.reconfigure(errors="replace")
         except Exception:
@@ -67,12 +78,13 @@ def _parse_env_text(text: str) -> dict:
         k, v = line.split("=", 1)
         k = k.strip()
         v = v.strip().strip('"').strip("'")
-        if k and v:
+        # 保留显式空值（KEY= 视为用户主动设为空，见审计问题 3），仅忽略无 key 的行
+        if k:
             out[k] = v
     return out
 
 
-def _load_local_secret() -> dict:
+def _load_local_secret() -> "dict[str, str]":
     """
     读取本地密钥文件（config/secret.env 优先，其次 config/.env）。
     只解析 KEY=VALUE 纯文本，不执行任何代码。
@@ -103,8 +115,18 @@ _LOCAL = _load_local_secret()
 
 
 def _get(key: str, default: str = "") -> str:
-    """环境变量优先，其次本地密钥文件，最后默认值"""
-    return os.getenv(key) or _LOCAL.get(key) or default
+    """
+    环境变量优先，其次本地密钥文件，最后默认值。
+    用 is-not-None 判断（审计问题 3）：本地密钥文件里显式留空（KEY=）会返回空串，
+    不再被 or 跳过回退到默认值；环境变量设为空串仍按未设置处理（os.getenv 固有行为，影响小）。
+    """
+    env = os.getenv(key)
+    if env:
+        return env
+    local = _LOCAL.get(key)
+    if local is not None:
+        return local
+    return default
 
 
 def _get_float(key: str, default: float) -> float:
@@ -159,7 +181,7 @@ def get_oss_public_url_base() -> str:
     return f"https://{OSS_BUCKET_NAME}.{OSS_ENDPOINT}".rstrip("/")
 
 
-def validate_oss_config():
+def validate_oss_config() -> "list[str]":
     """校验 OSS 配置是否可用，返回缺失/占位项列表（空列表表示配置完整）"""
     missing = []
     if is_placeholder(OSS_CONFIG["access_key_id"]):
@@ -186,7 +208,7 @@ DEEPSEEK_CONFIG = {
 }
 
 
-def validate_deepseek_config():
+def validate_deepseek_config() -> "list[str]":
     """校验 DeepSeek 配置，返回缺失/占位项列表"""
     missing = []
     if is_placeholder(DEEPSEEK_CONFIG["api_key"]):
@@ -226,7 +248,7 @@ RAG_CONFIG = {
 EMBEDDING_PROVIDERS = ("hash", "sentence_transformers", "openai_compatible")
 
 
-def validate_embedding_config():
+def validate_embedding_config() -> "list[str]":
     """校验向量化配置，返回问题列表（空列表表示可用）"""
     problems = []
     provider = EMBEDDING_CONFIG["provider"]
@@ -247,13 +269,17 @@ def validate_embedding_config():
 # ---------------------------------------------------------------------------
 # 初始化与体检
 # ---------------------------------------------------------------------------
-def init_dir():
-    """初始化所有运行时目录，不存在则自动创建"""
+def init_dir() -> None:
+    """
+    初始化所有运行时目录，不存在则自动创建。
+    由入口显式调用（main.py 与各脚本 __main__），不再在模块导入时自动执行，
+    以免单元测试 / CI 环境中 import 本模块就产生建目录的副作用（审计问题 11）。
+    """
     for d in (NOTES_DAILY_PATH, NOTES_PROBLEM_PATH, ASSETS_PATH, LOGS_PATH, VECTOR_STORE_PATH):
         os.makedirs(d, exist_ok=True)
 
 
-def check_config(verbose: bool = True):
+def check_config(verbose: bool = True) -> "dict[str, list[str]]":
     """
     全量配置体检，返回 {模块: 问题列表}。
     用于快速确认「哪些功能已配置可用、哪些还差什么」。
@@ -286,8 +312,6 @@ def check_config(verbose: bool = True):
     return report
 
 
-init_dir()
-
-
 if __name__ == "__main__":
+    init_dir()
     check_config()

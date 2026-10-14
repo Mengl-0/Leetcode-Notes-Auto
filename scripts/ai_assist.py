@@ -15,6 +15,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import ai_helper
+from config.settings import init_dir
 from core.notes_io import (
     list_problem_notes,
     latest_daily_note,
@@ -24,14 +25,14 @@ from core.notes_io import (
 )
 
 
-def _print_divider(title=""):
+def _print_divider(title: str = "") -> None:
     print("\n" + "=" * 50)
     if title:
         print(title)
         print("=" * 50)
 
 
-def analyze_problem_flow():
+def analyze_problem_flow() -> None:
     """菜单 1：分析某道题目题解"""
     _print_divider("🧠 AI 分析题目题解")
     notes = list_problem_notes()
@@ -62,7 +63,7 @@ def analyze_problem_flow():
         print(result)
 
 
-def summarize_daily_flow():
+def summarize_daily_flow() -> None:
     """菜单 2：生成今日刷题收获总结"""
     _print_divider("📝 AI 生成每日刷题总结")
     date_str = input(f"请输入日期（YYYY-MM-DD，回车默认今天 {today_str()}）：").strip()
@@ -79,12 +80,15 @@ def summarize_daily_flow():
         print(result)
         save = input("\n是否把总结追加写入该笔记？(y/N)：").strip().lower()
         if save == "y":
+            # 日期标签用所选笔记对应的日期（文件名），而不是运行当天，
+            # 避免对历史笔记生成总结时把标签写错（审计问题 2）
+            note_date = os.path.splitext(os.path.basename(path))[0]
             with open(path, "a", encoding="utf-8") as f:
-                f.write(f"\n\n## 🤖 AI 总结（{today_str()}）\n\n{result}\n")
+                f.write(f"\n\n## 🤖 AI 总结（{note_date}）\n\n{result}\n")
             print("✅ 已追加写入笔记")
 
 
-def convert_flow():
+def convert_flow() -> None:
     """菜单 3：Python 代码转 Go"""
     _print_divider("🔄 Python 转 Go")
     print("粘贴 Python 代码，输入单独一行 EOF 结束：")
@@ -104,7 +108,7 @@ def convert_flow():
         print(result)
 
 
-def review_flow():
+def review_flow() -> None:
     """菜单 4：代码 bug 检测"""
     _print_divider("🔍 代码 bug 检测")
     lang = input("代码语言（python/go，默认 python）：").strip().lower() or "python"
@@ -125,7 +129,7 @@ def review_flow():
         print(result)
 
 
-def main():
+def main() -> None:
     if not ai_helper.is_configured():
         print("❌ 尚未配置 DeepSeek，无法使用 AI 功能。")
         print("💡 复制 config/config.example.env 为 config/secret.env 并填写 DEEPSEEK_API_KEY 后重试")
@@ -152,8 +156,14 @@ def main():
             print("❌ 无效选择")
 
 
+def run() -> None:
+    """供 main.py 进程内调用的入口（审计问题 4）"""
+    init_dir()
+    main()
+
+
 if __name__ == "__main__":
     try:
-        main()
+        run()
     except KeyboardInterrupt:
         print("\n⏹️ 已取消")

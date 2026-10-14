@@ -17,13 +17,13 @@ _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.md$")
 _PROBLEM_RE = re.compile(r"^(\d{4})-([a-z0-9-]+)\.md$")
 
 
-def _list_md(dir_path: str):
+def _list_md(dir_path: str) -> "list[str]":
     if not os.path.isdir(dir_path):
         return []
     return [os.path.join(dir_path, f) for f in os.listdir(dir_path) if f.endswith(".md")]
 
 
-def list_problem_notes():
+def list_problem_notes() -> "list[str]":
     """题解笔记路径列表，按题号升序；命名不规范的排在最后"""
     files = _list_md(NOTES_PROBLEM_PATH)
 
@@ -34,7 +34,7 @@ def list_problem_notes():
     return sorted(files, key=key)
 
 
-def list_daily_notes():
+def list_daily_notes() -> "list[str]":
     """每日笔记路径列表，按日期倒序（最新在前）；非规范命名按字典序排在最后"""
     files = _list_md(NOTES_DAILY_PATH)
     dated = [f for f in files if _DATE_RE.match(os.path.basename(f))]
@@ -53,7 +53,7 @@ def read_text(path: str) -> str:
         return ""
 
 
-def latest_daily_note(date_str: str = "") -> str:
+def latest_daily_note(date_str: str = "") -> "str | None":
     """
     取指定日期（默认最近一篇）的每日笔记路径
     :param date_str: YYYY-MM-DD，留空表示最近一篇
@@ -66,7 +66,7 @@ def latest_daily_note(date_str: str = "") -> str:
     return dailies[0] if dailies else None
 
 
-def find_problem_note(keyword: str) -> str:
+def find_problem_note(keyword: str) -> "str | None":
     """
     按题号或 slug 关键字定位题解笔记
     :param keyword: 如 "1" / "0001" / "two-sum" / "two sum"
@@ -87,7 +87,7 @@ def find_problem_note(keyword: str) -> str:
     return None
 
 
-def dailies_on(date_str: str):
+def dailies_on(date_str: str) -> "tuple[str | None, str]":
     """取某日的每日笔记文本（含路径），供 AI 总结使用"""
     p = latest_daily_note(date_str)
     return (p, read_text(p)) if p else (None, "")

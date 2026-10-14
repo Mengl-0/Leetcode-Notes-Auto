@@ -14,23 +14,23 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core import rag, embedding
-from config.settings import RAG_CONFIG
+from config.settings import RAG_CONFIG, init_dir
 
 
-def _divider(title=""):
+def _divider(title: str = "") -> None:
     print("\n" + "=" * 50)
     if title:
         print(title)
         print("=" * 50)
 
 
-def build_flow():
+def build_flow() -> None:
     """菜单 1：构建 / 更新索引"""
     _divider("🗂️ 构建 / 更新知识库索引")
     rag.build_index()
 
 
-def query_flow():
+def query_flow() -> None:
     """菜单 2：基于笔记问答"""
     _divider("💬 基于我的笔记问答")
     if not embedding.is_available():
@@ -42,7 +42,7 @@ def query_flow():
     rag.answer(q)
 
 
-def search_flow():
+def search_flow() -> None:
     """菜单 3：纯检索，只看命中片段"""
     _divider("🔍 纯检索（展示命中片段）")
     if not embedding.is_available():
@@ -58,7 +58,7 @@ def search_flow():
     print(rag.build_context(hits))
 
 
-def main():
+def main() -> None:
     print(f"ℹ️ 当前向量化模式：{embedding.get_provider()}；检索 top_k={RAG_CONFIG['top_k']}")
     while True:
         _divider("📚 RAG 私有知识库（三期）")
@@ -79,8 +79,14 @@ def main():
             print("❌ 无效选择")
 
 
+def run() -> None:
+    """供 main.py 进程内调用的入口（审计问题 4）"""
+    init_dir()
+    main()
+
+
 if __name__ == "__main__":
     try:
-        main()
+        run()
     except KeyboardInterrupt:
         print("\n⏹️ 已取消")
