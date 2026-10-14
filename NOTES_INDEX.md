@@ -4,8 +4,8 @@
 
 ## 📅 每日打卡笔记
 
-- [2026-10-08](notes/daily/2026-10-08.md)
+- [2026-10-08 刷题打卡](notes/daily/2026-10-08.md)
 
 ## 🧗 单题题解
 
-- [0001-two-sum](notes/problems/0001-two-sum.md)
+- [LeetCode 1. 两数之和](notes/problems/0001-two-sum.md)

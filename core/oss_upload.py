@@ -10,7 +10,15 @@ import re
 import hashlib
 import mimetypes
 
-from config.settings import OSS_CONFIG, ASSETS_PATH, validate_oss_config
+from config.settings import (
+    OSS_CONFIG,
+    ASSETS_PATH,
+    validate_oss_config,
+    get_oss_public_url_base,
+)
+from core.logger import get_logger
+
+logger = get_logger("oss")
 
 # md 图片语法：![alt](路径 "可选title")，只处理本地相对/绝对路径，不处理 http(s) 链接
 MD_IMG_PATTERN = re.compile(r'(!\[[^\]]*\]\()\s*<?([^)\s]+?)>?(?:\s+[^)]*)?(\))')
@@ -33,7 +41,7 @@ def _get_bucket():
         print("❌ OSS 配置不完整，缺少：")
         for m in missing:
             print(f"   - {m}")
-        print("💡 请配置环境变量（推荐），或在 config/secret.py / config/.env 中填写，详见 README")
+        print("💡 请设置环境变量（推荐），或复制 config/config.example.env 为 config/secret.env 后填写")
         return None
     if not _oss_enabled():
         return None
@@ -42,29 +50,45 @@ def _get_bucket():
     return oss2.Bucket(auth, "https://" + OSS_CONFIG["endpoint"], OSS_CONFIG["bucket_name"])
 
 
+def _build_remote_key(local_path: str) -> str:
+    """
+    构造远端对象名：<prefix><内容sha1前8位>_<原文件名>
+    用内容哈希而非文件名，可保证同一张图重复上传时命中同一对象（天然去重）
+    """
+    with open(local_path, "rb") as f:
+        digest = hashlib.sha1(f.read()).hexdigest()[:8]
+    fname = os.path.basename(local_path)
+    prefix = (OSS_CONFIG.get("prefix") or "").strip("/")
+    prefix = f"{prefix}/" if prefix else ""
+    return f"{prefix}{digest}_{fname}"
+
+
 def upload_file(local_path: str):
     """
     上传单张图片到 OSS，返回线上访问链接；失败返回 None
-    远端 key 规则：<prefix>/<文件内容sha1前8位>_<原文件名>，同图去重、避免覆盖
+    远端 key 规则：<prefix><文件内容sha1前8位>_<原文件名>，同图去重、避免覆盖
     """
     if not os.path.exists(local_path):
         print(f"❌ 本地图片不存在：{local_path}")
+        logger.warning("本地图片不存在：%s", local_path)
         return None
+
     bucket = _get_bucket()
     if bucket is None:
         return None
+
+    fname = os.path.basename(local_path)
     try:
-        with open(local_path, "rb") as f:
-            digest = hashlib.sha1(f.read()).hexdigest()[:8]
-        fname = os.path.basename(local_path)
-        key = f"{OSS_CONFIG['prefix']}{digest}_{fname}"
+        key = _build_remote_key(local_path)
         # 显式指定 Content-Type，规避常见的图片类型识别问题
         ctype = mimetypes.guess_type(fname)[0] or "application/octet-stream"
         bucket.put_object_from_file(key, local_path, headers={"Content-Type": ctype})
-        url = f"{OSS_CONFIG['public_url_base'].rstrip('/')}/{key}"
+        url = f"{get_oss_public_url_base()}/{key}"
+        logger.info("上传成功：%s -> %s", fname, url)
         return url
     except Exception as e:
         print(f"❌ 上传失败 {fname}：{e}")
+        logger.error("上传失败 %s：%s", fname, e, exc_info=True)
         return None
 
 
@@ -117,6 +141,7 @@ def replace_img_in_md(md_path: str):
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(new_text)
         print(f"✅ 已替换 {md_path} 中 {replaced[0]} 处图片链接")
+        logger.info("替换 %s 中 %d 处图片链接", md_path, replaced[0])
     else:
         print(f"ℹ️ {os.path.basename(md_path)} 无需替换")
     return replaced[0]

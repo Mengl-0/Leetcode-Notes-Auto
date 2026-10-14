@@ -1,20 +1,24 @@
-# 密钥配置，绝对不要提交到 GitHub
+# ---------- 密钥配置：绝对不要提交到 GitHub ----------
+config/secret.env
 config/secret.py
 config/.env
 .env
 
-# 本地临时图片（图床走 OSS，不入库；保留 .gitkeep 占位）
+# ---------- 本地临时图片（图床走 OSS，不入库；保留 .gitkeep 占位）----------
 assets/*
 !assets/.gitkeep
 
-# Python 缓存
+# ---------- RAG 向量索引（本地自动生成，体积大且可重建，不入库）----------
+vector_store/
+
+# ---------- Python 缓存 ----------
 __pycache__/
 *.py[cod]
 
-# 日志
+# ---------- 日志 ----------
 logs/
 
-# 编辑器/系统缓存
+# ---------- 编辑器 / 系统缓存 ----------
 .vscode/
 .idea/
 .DS_Store
