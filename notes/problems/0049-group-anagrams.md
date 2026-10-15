@@ -1,6 +1,6 @@
 # LeetCode 49. 字母异位词分组
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/group-anagrams/
+> 难度：中等｜ 标签：哈希｜ 链接：https://leetcode.cn/problems/group-anagrams/
 >
 > 首次记录：2026-10-04  ｜  复习次数：0
 

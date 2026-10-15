@@ -1,6 +1,6 @@
 # LeetCode 326. 3的幂
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/power-of-three/
+> 难度：简单｜ 标签：数学｜ 链接：https://leetcode.cn/problems/power-of-three/
 >
 > 首次记录：2026-10-02  ｜  复习次数：0
 

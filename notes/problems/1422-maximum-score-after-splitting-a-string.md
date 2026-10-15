@@ -1,6 +1,6 @@
 # LeetCode 1422. 分割字符串的最大得分
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/maximum-score-after-splitting-a-string/
+> 难度：简单｜ 标签：数组&字符串｜ 链接：https://leetcode.cn/problems/maximum-score-after-splitting-a-string/
 >
 > 首次记录：2026-10-03  ｜  复习次数：0
 

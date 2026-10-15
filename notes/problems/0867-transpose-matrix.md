@@ -1,6 +1,6 @@
 # LeetCode 867. 转置矩阵
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/transpose-matrix/
+> 难度：简单｜ 标签：数组、矩阵｜ 链接：https://leetcode.cn/problems/transpose-matrix/
 >
 > 首次记录：2026-10-02  ｜  复习次数：0
 

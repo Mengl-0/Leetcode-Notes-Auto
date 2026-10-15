@@ -1,6 +1,6 @@
 # LeetCode 198. 打家劫舍
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/house-robber/
+> 难度：中等｜ 标签：动态规划、斐波那契数列  ｜ 链接：https://leetcode.cn/problems/house-robber/
 >
 > 首次记录：2026-10-10  ｜  复习次数：0
 

@@ -1,6 +1,6 @@
 # LeetCode 931. 下降路径和
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/minimum-falling-path-sum/
+> 难度：中等｜ 标签：矩阵、动态规划｜ 链接：https://leetcode.cn/problems/minimum-falling-path-sum/
 >
 > 首次记录：2026-10-12  ｜  复习次数：0
 

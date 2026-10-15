@@ -1,6 +1,6 @@
 # LeetCode 128. 最长连续序列
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/longest-consecutive-sequence/
+> 难度：中等｜ 标签：哈希｜ 链接：https://leetcode.cn/problems/longest-consecutive-sequence/
 >
 > 首次记录：2026-10-05  ｜  复习次数：0
 

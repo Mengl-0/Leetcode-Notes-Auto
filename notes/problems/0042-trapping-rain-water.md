@@ -1,6 +1,6 @@
 # LeetCode 42. 接雨水
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/trapping-rain-water/
+> 难度：困难｜ 标签：双指针｜ 链接：https://leetcode.cn/problems/trapping-rain-water/
 >
 > 首次记录：2026-10-06  ｜  复习次数：0
 

@@ -1,6 +1,6 @@
 # LeetCode 1784. 可回收且低脂产品
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/recyclable-and-low-fat-products/
+> 难度： 简单 ｜ 标签：数据库基础｜ 链接：https://leetcode.cn/problems/recyclable-and-low-fat-products/
 >
 > 首次记录：2026-10-01  ｜  复习次数：0
 

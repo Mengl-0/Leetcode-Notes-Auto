@@ -1,6 +1,6 @@
 # LeetCode 160. 相交链表
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/intersection-of-two-linked-lists/
+> 难度：简单｜ 标签：链表｜ 链接：https://leetcode.cn/problems/intersection-of-two-linked-lists/
 >
 > 首次记录：2026-10-05  ｜  复习次数：0
 

@@ -1,6 +1,6 @@
 # LeetCode 740. 删除并获得点数
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/delete-and-earn/
+> 难度：中等｜ 标签：动态规划、斐波那契数列｜ 链接：https://leetcode.cn/problems/delete-and-earn/
 >
 > 首次记录：2026-10-10  ｜  复习次数：0
 

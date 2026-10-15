@@ -1,6 +1,6 @@
 # LeetCode 62. 不同路径
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/unique-paths/
+> 难度：中等｜ 标签：动态规划｜ 链接：https://leetcode.cn/problems/unique-paths/
 >
 > 首次记录：2026-10-10  ｜  复习次数：0
 

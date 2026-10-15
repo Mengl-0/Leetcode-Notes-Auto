@@ -1,6 +1,6 @@
 # LeetCode 258. 各位相加
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/add-digits/
+> 难度：简单｜ 标签：数学｜ 链接：https://leetcode.cn/problems/add-digits/
 >
 > 首次记录：2026-10-01  ｜  复习次数：0
 

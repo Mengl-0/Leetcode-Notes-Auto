@@ -1,6 +1,6 @@
 # LeetCode 2586. 统计范围内的元音字符串数
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/count-vowel-strings-in-ranges/
+> 难度：简单｜ 标签：数组&字符串｜ 链接：https://leetcode.cn/problems/count-vowel-strings-in-ranges/
 >
 > 首次记录：2026-10-03  ｜  复习次数：0
 

@@ -1,6 +1,6 @@
 # LeetCode 852. 山脉数组的峰顶索引
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/peak-index-in-a-mountain-array/
+> 难度：中等｜ 标签：数组&字符串｜ 链接：https://leetcode.cn/problems/peak-index-in-a-mountain-array/
 >
 > 首次记录：2026-10-03  ｜  复习次数：0
 

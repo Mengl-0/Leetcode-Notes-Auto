@@ -1,6 +1,6 @@
 # LeetCode 11. 盛最多水的容器
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/container-with-most-water/
+> 难度：中等 ｜ 标签：双指针｜ 链接：https://leetcode.cn/problems/container-with-most-water/
 >
 > 首次记录：2026-10-06  ｜  复习次数：0
 

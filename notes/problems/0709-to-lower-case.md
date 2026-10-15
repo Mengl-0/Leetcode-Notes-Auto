@@ -1,6 +1,6 @@
 # LeetCode 709. 转化成小写字母
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/to-lower-case/
+> 难度：简单｜ 标签：位运算｜ 链接：https://leetcode.cn/problems/to-lower-case/
 >
 > 首次记录：2026-10-01  ｜  复习次数：0
 

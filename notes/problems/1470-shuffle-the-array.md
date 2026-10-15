@@ -1,6 +1,6 @@
 # LeetCode 1470. 重新排列数组
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/shuffle-the-array/
+> 难度：简单｜ 标签：数组&矩阵｜ 链接：https://leetcode.cn/problems/shuffle-the-array/
 >
 > 首次记录：2026-10-02  ｜  复习次数：0
 

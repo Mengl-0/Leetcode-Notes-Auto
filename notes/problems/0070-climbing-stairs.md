@@ -1,6 +1,6 @@
 # LeetCode 70. 爬楼梯
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/climbing-stairs/
+> 难度：简单｜ 标签：动态规划、斐波那契数列｜ 链接：https://leetcode.cn/problems/climbing-stairs/
 >
 > 首次记录：2026-10-08  ｜  复习次数：0
 

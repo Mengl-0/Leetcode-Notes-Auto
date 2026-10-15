@@ -1,6 +1,6 @@
 # LeetCode 509. 斐波那契数列
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/fibonacci-number/
+> 难度：简单｜ 标签：动态规划｜ 链接：https://leetcode.cn/problems/fibonacci-number/
 >
 > 首次记录：2026-10-08  ｜  复习次数：0
 

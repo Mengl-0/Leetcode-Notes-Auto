@@ -1,6 +1,6 @@
 # LeetCode 136. 只出现一次的数字
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/single-number/
+> 难度：简单｜ 标签：位运算，栈｜ 链接：https://leetcode.cn/problems/single-number/
 >
 > 首次记录：2026-10-07  ｜  复习次数：0
 

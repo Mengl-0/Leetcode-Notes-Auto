@@ -1,6 +1,6 @@
 # LeetCode 3. 无重复字符的最长子串
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/longest-substring-without-repeating-characters/
+> 难度：中等｜ 标签：滑动窗口｜ 链接：https://leetcode.cn/problems/longest-substring-without-repeating-characters/
 >
 > 首次记录：2026-10-07  ｜  复习次数：0
 

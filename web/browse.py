@@ -1,5 +1,12 @@
 # -*- coding:utf-8 -*-
-"""页面一：笔记浏览与管理（只读浏览 + 新建写操作带二次确认）"""
+"""页面一：笔记浏览与管理（只读浏览 + 新建写操作带二次确认）
+
+布局规范（毕业设计展示向，纯原生组件）：
+- 头部：标题居左、视图切换按钮组居右，下方分隔线
+- 筛选：单行三栏（搜索 / 难度 / 时间），下方小字结果统计，再分隔线
+- 元信息：边框卡片集中展示，标签用 badge 样式
+- 正文：标题层级降级规范、长内容折叠、图片限宽居中、底部小字辅助信息
+"""
 from __future__ import annotations
 
 import os
@@ -24,16 +31,23 @@ def _rebuild_index() -> None:
         st.warning(f"索引更新失败：{common.mask_sensitive(err)}")
 
 
-# 笔记模板里的结构标记（<!-- weather-start --> 等）供脚本定位使用，展示时应剥离，
-# 否则会被 st.markdown 当普通文本原样打印出来
+# ---------------------------------------------------------------------------
+# 笔记正文解析
+# ---------------------------------------------------------------------------
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
-# 独占一行的图片语法（模板截图均为整行）
 _IMG_LINE_RE = re.compile(
     r"^\s*!\[(?P<alt>[^\]]*)\]\(\s*<?(?P<url>[^)\s>]+)>?(?:\s+[^)]*)?\)\s*$"
 )
-# 代码围栏：``` 或 ~~~，围栏内的图片语法按普通代码文本处理
 _FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+_H2_RE = re.compile(r"^## (.+)$", re.M)
 _REMOTE_RE = re.compile(r"^(?:https?:)?//", re.I)
+# 模板占位与空小节：不展示，减少页面噪音
+_PLACEHOLDER_RE = re.compile(r"^\s*（待补充）\s*$")
+
+_DIFFICULTY_BADGE = {"简单": "green", "中等": "yellow", "困难": "red"}
+_CODE_HINTS = ("代码", "code")
+_LONG_FOLD_SECTIONS = ("思路分析", "推导", "复盘")
+_META_QUOTE_RE = re.compile(r"^\s*>\s*(难度|首次记录)")
 
 
 def _iter_note_blocks(text: str):
@@ -71,125 +85,219 @@ def _local_image(note_path: str, url: str):
         return None
 
 
-def _render_note(path: str) -> None:
-    text = notes_io.read_text(path)
-    if not text:
-        st.warning("笔记内容为空或读取失败")
-        return
+def _demote_headings(body: str) -> str:
+    """标题层级规范：页面主标题（题名）由界面渲染为最高层级 H1，
+    笔记内部的 # / ## 小节统一降级为 ###，避免重复大标题、层级混乱。
+    """
+    body = re.sub(r"(?m)^#(?!#) ", "### ", body)
+    return _H2_RE.sub(r"### \1", body)
 
-    remote_imgs = 0
+
+def _split_sections(body: str) -> "list[tuple[str, str]]":
+    """按 ### 小节切分正文；返回 (小节标题或'', 该段文本) 列表"""
+    parts = re.split(r"(?m)^(?=### )", body)
+    out: "list[tuple[str, str]]" = []
+    for seg in parts:
+        if not seg.strip():
+            continue
+        m = re.match(r"### (.+?)\s*$", seg)
+        out.append((m.group(1).strip() if m else "", seg))
+    return out
+
+
+def _should_fold(title: str, seg: str) -> bool:
+    """长内容折叠策略：思路/推导/复盘等小节默认折叠；代码小节默认折叠；其余展开"""
+    if not title:
+        return False
+    if any(h in title for h in _CODE_HINTS):
+        return True
+    if any(h in title for h in _LONG_FOLD_SECTIONS):
+        return True
+    return len(seg) > 1200
+
+
+def _render_body(text: str, note_path: str) -> None:
+    """渲染笔记正文：占位小节跳过、长内容折叠、图片限宽居中、外链容错"""
     missing: list = []
+
     for block in _iter_note_blocks(text):
         if block[0] == "md":
-            # 剥离结构注释后再渲染，顺带做敏感信息脱敏
             body = _COMMENT_RE.sub("", block[1]).strip("\n")
-            if body.strip():
-                common.safe_markdown(body)
+            if not body.strip():
+                continue
+            body = _demote_headings(body)
+            for seg_title, seg in _split_sections(body):
+                content = seg.split("\n", 1)[1] if seg.startswith("### ") else seg
+                core = (content or "").strip()
+                if not seg_title and _META_QUOTE_RE.search(core):
+                    # 头部元信息引用行：卡片已集中展示，正文降级为小字辅助文本
+                    st.caption(core.replace("\n>", " ").lstrip("> ").replace("｜", " ｜ "))
+                    continue
+                if _PLACEHOLDER_RE.fullmatch(core) or (
+                        "（待补充）" in core and len(core) < 20):
+                    # 模板占位小节跳过，减少页面噪音
+                    continue
+                if _should_fold(seg_title, seg):
+                    label = f"📂 {seg_title}" if seg_title else "展开内容"
+                    with st.expander(label, expanded=False):
+                        common.safe_markdown(seg)
+                else:
+                    common.safe_markdown(seg)
             continue
 
         _, alt, url = block
         caption = alt or None
         if caption and caption.lower() in ("alt text", "image", "图片"):
             caption = None
-        local = _local_image(path, url)
-        if local:
-            st.image(local, caption=caption)          # 原生组件，随明暗主题自适应
-        elif _REMOTE_RE.match(url):
-            remote_imgs += 1                          # 图床外链：脱敏后不回显
-        else:
-            missing.append(url)
+        local = _local_image(note_path, url)
+        # 图片统一限宽 + 居中 + 前后留白（原生三栏布局实现，不写 CSS）
+        _, img_col, _ = st.columns([1, 2, 1])
+        with img_col:
+            st.markdown("&nbsp;")  # 图片前留白（纯实体占位，非样式代码）
+            rendered = False
+            if local:
+                try:
+                    st.image(local, caption=caption, width="stretch")
+                    rendered = True
+                except Exception:
+                    pass
+            elif _REMOTE_RE.match(url):
+                try:
+                    st.image(url, caption=caption, width="stretch")
+                    rendered = True
+                except Exception:
+                    pass
+            if not rendered:
+                missing.append(url)
+            st.markdown("&nbsp;")  # 图片后留白
 
-    if remote_imgs:
-        st.caption(
-            "💡 笔记中的图床链接已脱敏，不在此回显；原始图片仍保留在本地 assets/ 或 OSS 图床。"
-        )
     if missing:
-        st.caption(f"⚠️ 有 {len(missing)} 张本地图片未找到（可能未同步或路径已变更）。")
+        st.caption(f"⚠️ 有 {len(missing)} 张图片未能显示（本地文件缺失或外链不可达）。")
 
 
-def render() -> None:
-    tab_daily, tab_problem, tab_new = st.tabs(
-        ["📅 每日打卡", "🧗 单题题解", "✚ 新建笔记"]
+def _badge_row(row: dict) -> None:
+    """元信息卡片里的标签行：badge 样式，区分普通文字"""
+    cols = st.columns(min(len(row["tags"]), 8) or 1)
+    for i, t in enumerate(row["tags"][:8]):
+        with cols[i]:
+            st.badge(t, color="blue")
+
+
+# ---------------------------------------------------------------------------
+# 视图一：单题题解
+# ---------------------------------------------------------------------------
+def _view_problems() -> None:
+    rows = common.problem_rows()
+    if not rows:
+        st.info("暂无题解笔记，可在「新建」中创建。")
+        return
+
+    c1, c2, c3 = st.columns([2, 1, 1])
+    kw = c1.text_input(
+        "搜索题解", key="prob_kw", placeholder="支持题号 / 标题 / 标签检索…",
+        label_visibility="collapsed",
     )
+    diff_opt = c2.selectbox(
+        "难度", ["全部难度", *common.DIFFICULTY_ORDER], key="prob_diff",
+        label_visibility="collapsed",
+    )
+    today = datetime.now().date()
+    range_opt = c3.selectbox(
+        "时间", ["全部时间", "近 7 天", "近 30 天"], key="prob_range",
+        label_visibility="collapsed",
+    )
+    days = {"全部时间": None, "近 7 天": 7, "近 30 天": 30}[range_opt]
+    diff_key = diff_opt if diff_opt != "全部难度" else "全部"
 
-    with tab_daily:
-        dailies = notes_io.list_daily_notes()
-        if not dailies:
-            st.info("暂无每日打卡笔记，可在「新建笔记」创建。")
-        else:
-            opts = {os.path.basename(p): p for p in dailies}
-            picked = st.selectbox(
-                "选择打卡日期", list(opts.keys()), key="daily_pick",
-                format_func=lambda k: k.replace(".md", ""),
-            )
-            _render_note(opts[picked])
-
-    with tab_problem:
-        rows = common.problem_rows()
-        if not rows:
-            st.info("暂无题解笔记。")
-            return
-        c1, c2, c3 = st.columns([2, 1, 2])
-        kw = c1.text_input("按题号 / 标题 / 标签搜索", key="prob_kw")
-        diff_opt = c2.selectbox(
-            "难度", ["全部", *common.DIFFICULTY_ORDER], key="prob_diff"
-        )
-        today = datetime.now().date()
-        range_opt = c3.selectbox(
-            "时间范围", ["全部", "近 7 天", "近 30 天"], key="prob_range"
-        )
-        days = {"全部": None, "近 7 天": 7, "近 30 天": 30}[range_opt]
-
-        filtered = []
-        for r in rows:
-            if diff_opt != "全部" and r["difficulty"] != diff_opt:
+    filtered = []
+    for r in rows:
+        if diff_key != "全部" and r["difficulty"] != diff_key:
+            continue
+        if kw:
+            hay = f"{r['pid']} {r['title']} {r['slug']} {' '.join(r['tags'])}".lower()
+            if kw.strip().lower() not in hay:
                 continue
-            if kw:
-                hay = f"{r['pid']} {r['title']} {r['slug']} {' '.join(r['tags'])}".lower()
-                if kw.strip().lower() not in hay:
-                    continue
-            if days is not None:
-                span = timedelta(days=days)
-                if today - r["date"].date() > span or r["date"].date() > today:
-                    continue
-            filtered.append(r)
+        if days is not None:
+            span = timedelta(days=days)
+            if today - r["date"].date() > span or r["date"].date() > today:
+                continue
+        filtered.append(r)
 
-        st.caption(f"共 {len(rows)} 篇，筛选后 {len(filtered)} 篇")
-        if not filtered:
-            st.warning("无符合条件的题解，请调整筛选条件。")
-            return
+    st.caption(f"共 {len(rows)} 篇 ｜ 筛选后 {len(filtered)} 篇")
+    st.divider()
 
-        labels = [f"{r['pid']} · {r['title']}" for r in filtered]
-        # 统计页跳转带来的定位请求（从统计回到明细）
-        jump = st.session_state.pop("jump_to_fname", None)
-        idx = 0
-        if jump:
-            for i, r in enumerate(filtered):
-                if r["fname"] == jump:
-                    idx = i
-                    break
-        picked_i = st.selectbox("选择题解", range(len(filtered)), index=idx,
-                                format_func=lambda i: labels[i], key="prob_pick")
-        row = filtered[picked_i]
+    if not filtered:
+        st.info("🔍 没有符合条件的笔记。试试放宽搜索关键词、切换难度或时间范围。")
+        return
 
-        meta = st.columns(4)
-        meta[0].metric("难度", row["difficulty"])
-        meta[1].metric("复习次数", row["reviews"])
-        meta[2].metric("首次记录", row["date_str"])
-        meta[3].metric("标签", " ".join(row["tags"]) or "—")
+    labels = [f"{r['pid']} · {r['title']}" for r in filtered]
+    jump = st.session_state.pop("jump_to_fname", None)
+    idx = 0
+    if jump:
+        for i, r in enumerate(filtered):
+            if r["fname"] == jump:
+                idx = i
+                break
+    picked_i = st.selectbox("选择题解", range(len(filtered)), index=idx,
+                            format_func=lambda i: labels[i], key="prob_pick",
+                            label_visibility="collapsed")
+    row = filtered[picked_i]
+
+    # ── 元信息卡片：带边框容器，横向均分，标签用 badge ──
+    with st.container(border=True):
+        m1, m2, m3, m4 = st.columns([1, 1, 2, 3])
+        m1.markdown("**难度**")
+        m1.badge(
+            row["difficulty"],
+            color=_DIFFICULTY_BADGE.get(row["difficulty"], "gray"),
+        )
+        m2.markdown("**复习次数**")
+        m2.write(str(row["reviews"]))
+        m3.markdown("**首次记录**")
+        m3.write(row["date_str"])
+        m4.markdown("**标签**")
         if row["tags"]:
-            st.markdown(
-                " ｜ ".join(
-                    f"`{t}`" for t in row["tags"]
-                )
-            )
-        st.divider()
-        _render_note(row["path"])
+            _badge_row(row)
+        else:
+            m4.caption("未打标签")
+    st.divider()
 
-    with tab_new:
-        n1, n2 = st.columns(2)
-        with n1:
-            st.markdown("### 📅 新建每日打卡")
+    st.markdown(f"# {row['title']}")
+    _render_body(notes_io.read_text(row["path"]), row["path"])
+
+    # 底部小字辅助信息：原题链接（弱化权重）
+    text = notes_io.read_text(row["path"])
+    m = re.search(r"https://leetcode\.cn/problems/[a-z0-9-]+/", text)
+    if m:
+        st.caption(f"🔗 原题链接：{m.group(0)}")
+
+
+# ---------------------------------------------------------------------------
+# 视图二：每日打卡
+# ---------------------------------------------------------------------------
+def _view_daily() -> None:
+    dailies = notes_io.list_daily_notes()
+    if not dailies:
+        st.info("暂无每日打卡笔记，可在「新建」中创建。")
+        return
+    opts = {os.path.basename(p): p for p in dailies}
+    picked = st.selectbox(
+        "选择打卡日期", list(opts.keys()), key="daily_pick",
+        format_func=lambda k: k.replace(".md", ""),
+    )
+    st.divider()
+    st.markdown(f"# 📅 {picked[:-3]} 刷题打卡")
+    _render_body(notes_io.read_text(opts[picked]), opts[picked])
+
+
+# ---------------------------------------------------------------------------
+# 视图三：新建笔记（写操作，保留二次确认）
+# ---------------------------------------------------------------------------
+def _view_new() -> None:
+    n1, n2 = st.columns(2)
+    with n1:
+        with st.container(border=True):
+            st.markdown("**📅 新建每日打卡**")
             d_date = st.date_input("打卡日期", value=datetime.now().date(),
                                    key="new_daily_date")
             if st.button("生成每日笔记", key="btn_new_daily", type="primary"):
@@ -199,8 +307,9 @@ def render() -> None:
                 if path:
                     st.success(f"已生成：{os.path.basename(path)}")
                     _rebuild_index()
-        with n2:
-            st.markdown("### 🧗 新建单题题解")
+    with n2:
+        with st.container(border=True):
+            st.markdown("**🧗 新建单题题解**")
             p_id = st.text_input("题号（数字）", key="new_prob_id")
             p_slug = st.text_input("英文 slug（如 two-sum）", key="new_prob_slug")
             p_title = st.text_input("中文标题（可留空，默认用 slug）",
@@ -211,9 +320,8 @@ def render() -> None:
                 if not p_id.strip() or not p_slug.strip():
                     st.error("题号与 slug 均不能为空")
                 else:
-                    # 写操作二次确认（方案约束：写入类操作保留确认）
                     if st.button(
-                        f"确认在 notes/problems 创建 {p_id.strip()}-{slugify(p_slug)}.md？",
+                        f"确认创建 {p_id.strip()}-{slugify(p_slug)}.md？",
                         key="btn_new_prob_confirm",
                     ):
                         path, logs, err = common.run_captured(
@@ -223,3 +331,26 @@ def render() -> None:
                         if path:
                             st.success(f"已生成：{os.path.basename(path)}")
                             _rebuild_index()
+
+
+# ---------------------------------------------------------------------------
+# 页面入口：头部左右分栏（标题区由 app.py 渲染，此处放视图切换）
+# ---------------------------------------------------------------------------
+def render() -> None:
+    head_l, head_r = st.columns([3, 2])
+    with head_l:
+        st.caption("浏览、筛选与管理刷题笔记")
+    with head_r:
+        view = st.segmented_control(
+            "视图", ["单题题解", "每日打卡", "新建笔记"],
+            default="单题题解", key="browse_view",
+            label_visibility="collapsed",
+        )
+    st.divider()
+
+    if view == "每日打卡":
+        _view_daily()
+    elif view == "新建笔记":
+        _view_new()
+    else:
+        _view_problems()

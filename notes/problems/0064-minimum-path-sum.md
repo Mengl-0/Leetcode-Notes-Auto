@@ -1,6 +1,6 @@
 # LeetCode 64. 最小路径和
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/minimum-path-sum/
+> 难度：中等｜ 标签：动态规划｜ 链接：https://leetcode.cn/problems/minimum-path-sum/
 >
 > 首次记录：2026-10-11  ｜  复习次数：0
 

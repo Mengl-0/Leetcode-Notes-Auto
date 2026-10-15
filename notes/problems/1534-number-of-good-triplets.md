@@ -1,6 +1,6 @@
 # LeetCode 1534. 统计好三元数组
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/number-of-good-triplets/
+> 难度：简单｜ 标签：循环｜ 链接：https://leetcode.cn/problems/number-of-good-triplets/
 >
 > 首次记录：2026-09-30  ｜  复习次数：0
 

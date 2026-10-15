@@ -1,6 +1,6 @@
 # LeetCode 438. 找到字符串中所有字母异位词
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/find-all-anagrams-in-a-string/
+> 难度：中等｜ 标签：滑动窗口｜ 链接：https://leetcode.cn/problems/find-all-anagrams-in-a-string/
 >
 > 首次记录：2026-10-07  ｜  复习次数：0
 

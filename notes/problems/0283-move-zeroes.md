@@ -1,6 +1,6 @@
 # LeetCode 283. 移动零
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/move-zeroes/
+> 难度：简单｜ 标签：双指针｜ 链接：https://leetcode.cn/problems/move-zeroes/
 >
 > 首次记录：2026-10-05  ｜  复习次数：0
 

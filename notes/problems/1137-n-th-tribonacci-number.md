@@ -1,6 +1,6 @@
 # LeetCode 1137. 第N个泰波那契数
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/n-th-tribonacci-number/
+> 难度：简单｜ 标签：动态规划、斐波那契数列｜ 链接：https://leetcode.cn/problems/n-th-tribonacci-number/
 >
 > 首次记录：2026-10-08  ｜  复习次数：0
 

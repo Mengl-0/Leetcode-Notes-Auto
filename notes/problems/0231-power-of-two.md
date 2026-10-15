@@ -1,6 +1,6 @@
 # LeetCode 231. 2的幂
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/power-of-two/
+> 难度：简单｜ 标签：数学、位运算｜ 链接：https://leetcode.cn/problems/power-of-two/
 >
 > 首次记录：2026-10-02  ｜  复习次数：0
 

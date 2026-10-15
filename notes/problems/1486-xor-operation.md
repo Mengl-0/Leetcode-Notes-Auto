@@ -1,6 +1,6 @@
 # LeetCode 1486. 数组异或操作
 
-> 难度：  ｜ 标签：  ｜ 链接：https://leetcode.cn/problems/xor-operation/
+> 难度：简单｜ 标签：循环｜ 链接：https://leetcode.cn/problems/xor-operation/
 >
 > 首次记录：2026-09-30  ｜  复习次数：0
 
