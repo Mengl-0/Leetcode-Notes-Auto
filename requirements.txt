@@ -18,3 +18,9 @@ oss2>=2.18.0
 # 如需更高质量的语义检索，可选安装本地向量模型（体积约 2GB，首次需联网下载）：
 # sentence-transformers>=2.2.0
 # 或改用 EMBEDDING_PROVIDER=openai_compatible 调用第三方 embedding 接口（同样零依赖）
+
+# ---- 四期：Web 可视化界面（streamlit run web/app.py）----
+# 未安装时命令行入口 main.py 全部功能不受影响；缺失时 web 层会提示安装方式
+streamlit>=1.30
+plotly>=5.18
+pandas>=2.0
