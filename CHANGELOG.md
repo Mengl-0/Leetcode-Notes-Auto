@@ -13,6 +13,17 @@
 - DeepSeek 题解分析、每日总结、Python↔Go 互转、代码 review
 - hash 离线向量 / sentence_transformers 本地模型 / openai_compatible API 三种向量化 provider
 - 配置体检（菜单 8）
+- 四期 Web 可视化界面 `web/`（Streamlit）：笔记浏览与管理、刷题统计看板、AI 增强可视化、RAG 知识库问答、一键同步与配置体检，功能对齐命令行
+- Streamlit 社区云在线部署：https://mengl-0-leetcode-notes-auto-webapp-jjgrdx.streamlit.app/
+- requirements.txt 增加 web 依赖声明：streamlit（核心）/ pandas；plotly 改为可选点缀
+- 界面明暗主题：`.streamlit/config.toml` 原生 `[theme.light]` / `[theme.dark]` 配色表，配合侧栏「🌙 暗色模式」开关（调用 Streamlit 原生主题接口，不引入任何第三方 UI / 主题库）
+
+### Fixed（2026-10-15 界面优化）
+- **P1** 笔记正文里的结构标记（`<!-- weather-start -->` 等）被当普通文本渲染出来：渲染前统一剥离 HTML 注释
+- **P1** 笔记中的本地图片（相对路径 `../../assets/*.png`）无法显示：按笔记所在目录解析后用原生 `st.image` 渲染，图床外链仍保持脱敏提示
+- **P1** 「刷题统计看板」每周趋势导致整页崩溃：`resample("W-SUN").size` 是方法，须写作 `size()`；原 `.size.rename(...)` 抛 `AttributeError: 'function' object has no attribute 'rename'`
+- **P1** 「刷题统计看板」按题号定位报 `NameError`：补上缺失的 `from core import notes_io`
+- **P2** 图表迁移到 Streamlit 原生 `st.line_chart` / `st.bar_chart`（随明暗主题自动换色）；plotly 难度环形图降级为「装了才用」的可选点缀
 
 ### Fixed（2026-10-14 审计修复）
 - **P0** 一键同步时图片重复上传：`batch_upload_assets` 与 `scan_all_md_replace` 之间共享 `url_cache`，已上传图片不再二次 PUT

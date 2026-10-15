@@ -1,0 +1,45 @@
+# =====================================================================
+# Streamlit 原生主题配置（四期 · 界面优化）
+#
+# 设计原则：只用 Streamlit 原生能力，不引入任何第三方 UI / 主题库，
+#           避免 Streamlit Cloud 打包体积与构建耗时增加。
+#
+# 明暗切换的三种方式（互为兜底）：
+#   1) 应用侧栏「🌙 暗色模式」开关（调用 Streamlit 原生主题接口，即时生效）
+#   2) 页面右上角 ⋮ → Settings → Theme（Streamlit 原生菜单，最稳妥）
+#   3) 直接把下面 [theme] 的 base 改成 "dark" 作为默认主题
+#
+# 配色取向：浅色偏「长文本笔记阅读」（纯白底、深灰字、克制的对比度）；
+#           暗色偏「代码阅读」（深底、浅字、代码块单独配色）。
+# =====================================================================
+
+[theme]
+base = "light"
+primaryColor = "#e04b4b"          # 与项目主色一致的红色
+font = "sans serif"
+codeFont = "monospace"
+showSidebarBorder = true
+
+# 浅色：长文本阅读优先
+[theme.light]
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f6f8fa"
+textColor = "#1f2328"
+codeBackgroundColor = "#f6f8fa"
+codeTextColor = "#0a3069"
+linkColor = "#0969da"
+borderColor = "#d0d7de"
+
+# 暗色：代码阅读优先
+[theme.dark]
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#161b22"
+textColor = "#e6edf3"
+codeBackgroundColor = "#161b22"
+codeTextColor = "#79c0ff"
+linkColor = "#58a6ff"
+borderColor = "#30363d"
+
+[browser]
+# 关闭匿名使用统计上报，减少无谓的网络请求
+gatherUsageStats = false

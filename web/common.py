@@ -150,6 +150,95 @@ def compute_streak(dates: "set[str]", today: str) -> int:
     return n
 
 
+# ---------------------------------------------------------------------------
+# 敏感信息脱敏（展示层统一入口）
+# ---------------------------------------------------------------------------
+# Web 界面回显终端日志 / 笔记正文 / 检索片段 / AI 输出时，不得暴露三类敏感信息：
+#   1) API 密钥 / AccessKey（sk- 与 LTAI 前缀）
+#   2) Git 远程仓库地址与账号名
+#   3) OSS 桶名 / 域名 / 图片公网地址
+# 脱敏只作用于「展示」，绝不修改磁盘上的笔记原文（笔记正文本身不算敏感信息）。
+_KEY_RE = re.compile(r"sk-[A-Za-z0-9_\-]{6,}")
+_AKID_RE = re.compile(r"LTAI[A-Za-z0-9]{8,}")
+# 阿里云 OSS 公网地址（https://<桶>.oss-<地域>.aliyuncs.com/...）：即使 config/secret.env
+# 未部署（如 Streamlit Cloud 只部署了已提交的笔记），也能按模式脱敏桶名/域名。
+_OSS_HOST_RE = re.compile(r"https?://[A-Za-z0-9._-]+\.oss-[a-z0-9-]+\.aliyuncs\.com")
+_MASK = "***"
+
+
+def _git_remote_parts() -> "tuple[str, str]":
+    """读取 origin 远程地址与其账号名；本地无 .git / 云端部署时返回 ('', '')。"""
+    import subprocess
+    url = ""
+    try:
+        proc = subprocess.run(
+            ["git", "remote", "get-url", "origin"],
+            capture_output=True, text=True, cwd=str(BASE_DIR), timeout=5,
+        )
+        if proc.returncode == 0:
+            url = proc.stdout.strip()
+    except Exception:
+        url = ""
+    account = ""
+    if url:
+        m = re.search(r"(?:github\.com[:/])([^/]+)", url)
+        if m:
+            account = m.group(1)
+    return url, account
+
+
+@st.cache_data(show_spinner=False)
+def _sensitive_substrings() -> "tuple[str, ...]":
+    """汇总需脱敏的敏感子串，按长度降序（保证先替换长串，如完整域名先于其中的桶名）。"""
+    from config.settings import (
+        OSS_BUCKET_NAME, OSS_ENDPOINT, get_oss_public_url_base, is_placeholder,
+    )
+    subs = []
+    if not is_placeholder(OSS_BUCKET_NAME):
+        subs.append(OSS_BUCKET_NAME)
+    try:
+        base = get_oss_public_url_base()
+    except Exception:
+        base = ""
+    if base and not is_placeholder(base):
+        subs.append(base)
+    # 域名仅在有真实桶时一并脱敏，避免默认端点字符串误伤无关文本
+    if not is_placeholder(OSS_BUCKET_NAME) and not is_placeholder(OSS_ENDPOINT):
+        subs.append(OSS_ENDPOINT)
+    url, account = _git_remote_parts()
+    if url:
+        subs.append(url)
+    if account:
+        subs.append(account)
+    seen, out = set(), []
+    for s in subs:
+        s = (s or "").strip()
+        if s and len(s) >= 3 and s not in seen:
+            seen.add(s)
+            out.append(s)
+    return tuple(sorted(out, key=len, reverse=True))
+
+
+def mask_sensitive(text: str) -> str:
+    """将文本中的密钥 / git 远程地址与账号 / OSS 桶名·域名·图片公网地址替换为掩码。
+
+    供所有面向用户的展示（日志、笔记渲染、检索片段、AI 输出）调用，不修改原文。
+    """
+    if not text:
+        return text
+    text = _KEY_RE.sub("sk-***", text)
+    text = _AKID_RE.sub("LTAI***", text)
+    text = _OSS_HOST_RE.sub(_MASK, text)
+    for s in _sensitive_substrings():
+        text = text.replace(s, _MASK)
+    return text
+
+
+def safe_markdown(body: str, unsafe_allow_html: bool = False) -> None:
+    """st.markdown 的脱敏封装：先掩码敏感信息再渲染。"""
+    st.markdown(mask_sensitive(body), unsafe_allow_html=unsafe_allow_html)
+
+
 def run_captured(fn, *args, **kwargs):
     """执行 core/scripts 函数并捕获其 print 进度输出
 
@@ -166,12 +255,12 @@ def run_captured(fn, *args, **kwargs):
 
 
 def show_logs(logs: str, error: str | None = None) -> None:
-    """把捕获到的终端输出折叠展示；有异常时红字提示"""
+    """把捕获到的终端输出折叠展示；有异常时红字提示（输出先脱敏，不暴露密钥/远程地址/图床地址）"""
     if error:
-        st.error(f"执行出错：{error}")
+        st.error(f"执行出错：{mask_sensitive(error)}")
     if logs.strip():
         with st.expander("📜 执行日志", expanded=bool(error)):
-            st.code(logs.strip(), language="text")
+            st.code(mask_sensitive(logs.strip()), language="text")
 
 
 def note_label(row: dict) -> str:

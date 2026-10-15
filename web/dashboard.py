@@ -12,10 +12,15 @@ import os
 from datetime import datetime, timedelta
 
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 import common
+from core import notes_io
+
+try:  # plotly 仅作可选点缀（难度环形图）；未安装时自动降级为原生条形图
+    import plotly.express as px
+except Exception:  # pragma: no cover - 取决于运行环境
+    px = None
 
 _PIE_COLORS = {"简单": "#2ecc71", "中等": "#f1c40f", "困难": "#e74c3c", "未标注": "#95a5a6"}
 
@@ -93,15 +98,15 @@ def render() -> None:
         daily = df.groupby(df["date"].dt.date).size().rename("题数").reset_index()
         daily["date"] = pd.to_datetime(daily["date"])
         t1, t2 = st.columns(2)
-        fig_d = px.line(daily, x="date", y="题数", markers=True,
-                        labels={"date": "日期", "题数": "当日题数"}, template="plotly_white")
-        t1.plotly_chart(fig_d, width="stretch")
-        weekly = (
-            df.set_index("date").resample("W-SUN").size.rename("题数").reset_index()
-        )
-        fig_w = px.bar(weekly, x="date", y="题数",
-                       labels={"date": "周", "题数": "每周题数"}, template="plotly_white")
-        t2.plotly_chart(fig_w, width="stretch")
+        with t1:
+            st.caption("每日题数")
+            st.line_chart(daily, x="date", y="题数", x_label="日期", y_label="当日题数")
+        with t2:
+            st.caption("每周题数")
+            weekly = (
+                df.set_index("date").resample("W-SUN").size().rename("题数").reset_index()
+            )
+            st.bar_chart(weekly, x="date", y="题数", x_label="周", y_label="每周题数")
 
     if trend_ok:
         st.markdown("### 进度与分布")
@@ -117,21 +122,24 @@ def render() -> None:
             dist = df["difficulty"].value_counts().reindex(
                 [d for d in common.DIFFICULTY_ORDER if d in set(df["difficulty"])]
             )
-            fig_p = px.pie(names=dist.index, values=dist.values, hole=0.45,
-                           color=dist.index, color_discrete_map=_PIE_COLORS,
-                           labels={"value": "题数"}, template="plotly_white")
-            fig_p.update_layout(showlegend=False, margin=dict(l=0, r=0, t=10, b=0))
-            st.plotly_chart(fig_p, width="stretch")
+            if px is not None:  # 可选点缀：装了 plotly 就用环形图
+                fig_p = px.pie(names=dist.index, values=dist.values, hole=0.45,
+                               color=dist.index, color_discrete_map=_PIE_COLORS)
+                fig_p.update_layout(showlegend=True, margin=dict(l=0, r=0, t=10, b=0))
+                st.plotly_chart(fig_p, width="stretch")
+            else:  # 原生兜底，且随明暗主题自动换色
+                st.caption("难度分布")
+                st.bar_chart(dist.rename("题数"), horizontal=True,
+                             x_label="难度", y_label="题数")
         with p3:
             tag_cnt: "dict[str, int]" = {}
             for ts in df["tags"]:
                 for t in ts:
                     tag_cnt[t] = tag_cnt.get(t, 0) + 1
             if tag_cnt:
-                s = pd.Series(tag_cnt).sort_values()
-                fig_b = px.bar(s, orientation="h", labels={"value": "题数", "index": "标签"},
-                               template="plotly_white")
-                st.plotly_chart(fig_b, width="stretch")
+                s = pd.Series(tag_cnt).sort_values().rename("题数")
+                st.caption("标签分布")
+                st.bar_chart(s, horizontal=True, x_label="标签", y_label="题数")
             else:
                 st.info("当前区间内题目均未打标签。")
 

@@ -79,7 +79,7 @@ def render() -> None:
                 result, logs, err = common.run_captured(rag.answer, question, top_k)
                 common.show_logs(logs, err)
             if err:
-                st.error(f"问答失败：{err}")
+                st.error(f"问答失败：{common.mask_sensitive(err)}")
             else:
                 ans, hits = result if result else ("（无回答）", [])
                 st.session_state.setdefault("rag_history", []).append(
@@ -88,7 +88,7 @@ def render() -> None:
         for q, a, hits in reversed(st.session_state.get("rag_history", [])):
             st.chat_message("user").markdown(f"**{q}**")
             with st.chat_message("assistant"):
-                st.markdown(a or "（无回答）")
+                common.safe_markdown(a or "（无回答）")
                 if hits:
                     with st.expander(f"📎 来源片段（{len(hits)}）"):
                         for score, chunk in hits:
@@ -96,13 +96,13 @@ def render() -> None:
 
 
 def _hit_card(score: float, chunk: dict, plain: bool = False) -> None:
-    """单个命中片段卡片：来源路径 + 标题 + 相似度得分 + 原文"""
+    """单个命中片段卡片：来源路径 + 标题 + 相似度得分 + 原文（原文先脱敏）"""
     head = f"`{chunk.get('source', '?')}` ｜ {chunk.get('heading', '')} ｜ 相似度 {score:.3f}"
     if plain:
-        st.markdown(head)
-        st.markdown(chunk.get("text", "")[:800])
+        common.safe_markdown(head)
+        common.safe_markdown(chunk.get("text", "")[:800])
         st.divider()
     else:
         with st.container(border=True):
-            st.markdown(head)
-            st.markdown(chunk.get("text", "")[:800])
+            common.safe_markdown(head)
+            common.safe_markdown(chunk.get("text", "")[:800])

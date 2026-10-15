@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import os
+import re
 from datetime import datetime, timedelta
+from pathlib import Path
 
-import pandas as pd
 import streamlit as st
 
 import common
-from config.settings import NOTES_DAILY_PATH, NOTES_PROBLEM_PATH
 from core import notes_io
 from scripts.new_daily_note import create_daily_note
 from scripts.new_problem import create_problem_note, slugify
@@ -21,7 +21,54 @@ def _rebuild_index() -> None:
 
     _, logs, err = common.run_captured(regenerate_index)
     if err:
-        st.warning(f"索引更新失败：{err}")
+        st.warning(f"索引更新失败：{common.mask_sensitive(err)}")
+
+
+# 笔记模板里的结构标记（<!-- weather-start --> 等）供脚本定位使用，展示时应剥离，
+# 否则会被 st.markdown 当普通文本原样打印出来
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
+# 独占一行的图片语法（模板截图均为整行）
+_IMG_LINE_RE = re.compile(
+    r"^\s*!\[(?P<alt>[^\]]*)\]\(\s*<?(?P<url>[^)\s>]+)>?(?:\s+[^)]*)?\)\s*$"
+)
+# 代码围栏：``` 或 ~~~，围栏内的图片语法按普通代码文本处理
+_FENCE_RE = re.compile(r"^\s*(?:```|~~~)")
+_REMOTE_RE = re.compile(r"^(?:https?:)?//", re.I)
+
+
+def _iter_note_blocks(text: str):
+    """把笔记按「markdown 文本块 / 独占一行的图片」切分；代码围栏内不做图片识别。
+
+    产出 ("md", 文本) 或 ("img", alt, url)。
+    """
+    buf: list = []
+    in_fence = False
+    for line in text.splitlines(keepends=True):
+        if _FENCE_RE.match(line):
+            in_fence = not in_fence
+            buf.append(line)
+            continue
+        match = None if in_fence else _IMG_LINE_RE.match(line)
+        if match is None:
+            buf.append(line)
+            continue
+        if buf:
+            yield ("md", "".join(buf))
+            buf = []
+        yield ("img", match.group("alt").strip(), match.group("url").strip())
+    if buf:
+        yield ("md", "".join(buf))
+
+
+def _local_image(note_path: str, url: str):
+    """把笔记里的图片地址解析为真实存在的本地文件；外链 / 不存在则返回 None"""
+    if not url or url.startswith("data:") or _REMOTE_RE.match(url):
+        return None
+    p = Path(url) if os.path.isabs(url) else (Path(note_path).parent / url)
+    try:
+        return str(p.resolve()) if p.is_file() else None
+    except OSError:
+        return None
 
 
 def _render_note(path: str) -> None:
@@ -29,7 +76,35 @@ def _render_note(path: str) -> None:
     if not text:
         st.warning("笔记内容为空或读取失败")
         return
-    st.markdown(text)
+
+    remote_imgs = 0
+    missing: list = []
+    for block in _iter_note_blocks(text):
+        if block[0] == "md":
+            # 剥离结构注释后再渲染，顺带做敏感信息脱敏
+            body = _COMMENT_RE.sub("", block[1]).strip("\n")
+            if body.strip():
+                common.safe_markdown(body)
+            continue
+
+        _, alt, url = block
+        caption = alt or None
+        if caption and caption.lower() in ("alt text", "image", "图片"):
+            caption = None
+        local = _local_image(path, url)
+        if local:
+            st.image(local, caption=caption)          # 原生组件，随明暗主题自适应
+        elif _REMOTE_RE.match(url):
+            remote_imgs += 1                          # 图床外链：脱敏后不回显
+        else:
+            missing.append(url)
+
+    if remote_imgs:
+        st.caption(
+            "💡 笔记中的图床链接已脱敏，不在此回显；原始图片仍保留在本地 assets/ 或 OSS 图床。"
+        )
+    if missing:
+        st.caption(f"⚠️ 有 {len(missing)} 张本地图片未找到（可能未同步或路径已变更）。")
 
 
 def render() -> None:

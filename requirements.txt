@@ -21,6 +21,17 @@ oss2>=2.18.0
 
 # ---- 四期：Web 可视化界面（streamlit run web/app.py）----
 # 未安装时命令行入口 main.py 全部功能不受影响；缺失时 web 层会提示安装方式
-streamlit>=1.30
-plotly>=5.18
+#
+# 依赖克制原则：界面只用 Streamlit 原生组件（st.metric / st.tabs / st.dataframe /
+# st.line_chart / st.bar_chart / st.image / st.toggle），第三方组件一律作为可选点缀，
+# 避免 Streamlit Cloud 安装包过多导致构建超时或失败。
+#
+# 下限 1.46：需要原生明暗主题（[theme.light] / [theme.dark] 配置表与 st.context.theme），
+# 以便在应用内直接切换暗色/浅色（无需注入 CSS，也无需第三方主题库）。
+streamlit>=1.46
 pandas>=2.0
+
+# 可选点缀（锦上添花，非核心）：仅「刷题统计看板」的难度环形图使用。
+# 不安装时该图自动降级为原生 st.bar_chart，其余界面完全不受影响。
+# 若希望云端构建更快，保持注释即可。
+# plotly>=5.18

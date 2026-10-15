@@ -212,13 +212,13 @@ leetcode-notes-auto/
 
 ## 10. 后续拓展方向
 
-1. Web 界面：用 Streamlit 做简易网页界面，不用命令行操作。
+1. Web 界面：✅ 已实现（四期，`web/` 目录 + Streamlit，本地 `streamlit run web/app.py` 启动；已部署 Streamlit 社区云，线上地址 <https://mengl-0-leetcode-notes-auto-webapp-jjgrdx.streamlit.app/>）。
 2. 代码沙箱：增加 Python/Go 代码本地运行，自动执行样例，把运行结果写入笔记。
 3. 目录索引自动生成：✅ 已实现（`scripts/update_index.py` → `NOTES_INDEX.md`），后续可加入按标签/难度分类。
 4. AI 增强：✅ 已实现（二期，`core/ai_helper.py`）。
 5. RAG 私有知识库：✅ 已实现（三期，`core/embedding.py` + `core/rag.py`）。
 6. 导出功能：将 Markdown 笔记批量导出为 PDF。
-7. 统计看板：按题号/难度/日期统计刷题量，生成周报表（题解模板已预留「难度/标签」结构化字段支撑）。
+7. 统计看板：✅ 已实现（四期 Web 端「刷题统计看板」页，按题号/难度/标签/日期聚合，口径见《可视化界面后续优化方案》第四章）；周报表待实现。
 
 ## 11. 实现状态与优化记录（2026-10-08）
 

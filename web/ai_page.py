@@ -25,7 +25,7 @@ def _run_ai(fn, *args) -> "str | None":
     """调用 ai_helper 能力函数：捕获降级 print；返回 None 时把原因展示为日志"""
     result, logs, err = common.run_captured(fn, *args)
     if err:
-        st.error(f"AI 调用异常：{err}")
+        st.error(f"AI 调用异常：{common.mask_sensitive(err)}")
     if result is None:
         common.show_logs(logs or "（无输出：输入为空或密钥校验未通过）", None)
     return result
@@ -66,7 +66,7 @@ def render() -> None:
                     out = _run_ai(ai_helper.analyze_problem, text)
                 if out:
                     st.markdown("### 分析结果")
-                    st.markdown(out)
+                    common.safe_markdown(out)
 
     with t2:
         if not dailies:
@@ -85,7 +85,7 @@ def render() -> None:
                     out = _run_ai(ai_helper.summarize_daily, text)
                 if out:
                     st.markdown("### 总结结果")
-                    st.markdown(out)
+                    common.safe_markdown(out)
                     st.markdown("---")
                     if st.button("✍️ 追加写回该笔记", key="btn_ai_writeback"):
                         try:
@@ -113,7 +113,7 @@ def render() -> None:
                 c1.markdown("**源代码**")
                 c1.code(src, language="go" if direction.startswith("Go") else "python")
                 c2.markdown("**转换结果**")
-                c2.markdown(out)
+                c2.markdown(common.mask_sensitive(out))
 
     with t4:
         lang = st.selectbox("代码语言", ["python", "go"], key="ai_review_lang")
@@ -124,4 +124,4 @@ def render() -> None:
                 out = _run_ai(ai_helper.review_code, code, lang)
             if out:
                 st.markdown("### Review 结果")
-                st.markdown(out)
+                common.safe_markdown(out)

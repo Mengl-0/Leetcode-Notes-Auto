@@ -22,14 +22,14 @@ def _run_sync() -> None:
     """执行与 run_auto_sync 相同的四步流程，但分步反馈状态（界面化改造，不改下层）"""
     bar = st.progress(0.0, text="准备同步…")
     steps = [
-        ("1️⃣ 批量上传 assets 图片", lambda: batch_upload_assets()),
-        ("2️⃣ 扫描笔记替换图片链接", None),  # 需复用步骤 1 的 url_cache，循环内特判
-        ("3️⃣ 更新笔记目录索引", lambda: regenerate_index()),
-        ("4️⃣ Git 提交并推送", None),  # 提交信息含时间戳，循环内特判
+        "1️⃣ 批量上传 assets 图片",
+        "2️⃣ 扫描笔记替换图片链接",  # 需复用步骤 1 的 url_cache，循环内特判
+        "3️⃣ 更新笔记目录索引",
+        "4️⃣ Git 提交并推送",  # 提交信息含时间戳，循环内特判
     ]
     url_cache: dict = {}
     failed = False
-    for i, (name, fn) in enumerate(steps):
+    for i, name in enumerate(steps):
         bar.progress(i / len(steps), text=f"{name} …")
         if i == 0:
             res, logs, err = common.run_captured(batch_upload_assets)
@@ -50,7 +50,7 @@ def _run_sync() -> None:
         if err:
             failed = True
             bar.progress(1.0, text=f"❌ {name} 失败")
-            st.error(f"{name} 出错：{err}")
+            st.error(f"{name} 出错：{common.mask_sensitive(err)}")
         common.show_logs(logs, err)
         if failed:
             st.info("后续步骤已中止；修复后可重新发起同步。")

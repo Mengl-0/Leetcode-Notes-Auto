@@ -1,11 +1,14 @@
 # LeetCode-Notes-Auto 刷题自动化知识库系统
 
-面向个人算法刷题场景的自动化笔记管理工具，分三期迭代：
+面向个人算法刷题场景的自动化笔记管理工具，分四期迭代：
 
 - **一期 · 自动化**：命令行菜单调度、Markdown 笔记模板、阿里云 OSS 图床上传、md 图片链接替换、笔记目录索引、Git 一键提交推送。
 - **二期 · AI 增强**：接入 DeepSeek，自动分析题解思路/复杂度/易错点、生成每日刷题总结、Python↔Go 代码转换、代码 bug 检测。
 - **三期 · RAG 知识库**：把全部笔记向量化，搭建私有刷题知识库，只基于你自己的笔记做检索问答。
+- **四期 · Web 可视化界面**：Streamlit 图形界面（`web/`）——笔记浏览与管理、刷题统计看板、AI 增强、RAG 问答、一键同步与配置体检，与命令行入口功能对齐。
 
+> 🌐 **在线入口（Streamlit 社区云）**：<https://mengl-0-leetcode-notes-auto-webapp-jjgrdx.streamlit.app/>
+>
 > 二三期功能全部**零依赖可跑**：AI 调用用标准库 urllib，向量化默认用离线哈希（TF-IDF 加权），未配置密钥时安全降级、不崩溃。
 
 ## 功能菜单（`python main.py`）
@@ -52,6 +55,10 @@ setx DEEPSEEK_API_KEY "sk-你的密钥"
 # 3. 运行
 python main.py
 #    先选菜单 8「配置体检」，确认各模块缺哪些配置
+
+# 4. Web 可视化界面（四期，需先安装 streamlit / plotly / pandas）
+streamlit run web/app.py
+#    已部署 Streamlit 社区云，可直接访问：https://mengl-0-leetcode-notes-auto-webapp-jjgrdx.streamlit.app/
 ```
 
 > 密钥读取优先级：**环境变量 > `config/secret.env` > `config/.env` > 占位符**。三者都已被 `.gitignore` 忽略，切勿把真实密钥写进代码提交。
@@ -60,7 +67,7 @@ python main.py
 
 ```text
 leetcode-notes-auto/
-├─ main.py                 # 程序总入口（命令行菜单，调度一二三期功能）
+├─ main.py                 # 程序总入口（命令行菜单，调度一二三/四期功能）
 ├─ README.md               # 项目介绍（GitHub 仓库首页）
 ├─ requirements.txt        # 依赖清单（均可选，缺失时安全降级）
 ├─ NOTES_INDEX.md          # 自动生成的笔记索引，勿手改（保留在 Git）
@@ -87,6 +94,14 @@ leetcode-notes-auto/
 │   ├─ auto_sync.py        # 一键全流程同步
 │   ├─ ai_assist.py        # 二期：AI 增强子菜单
 │   └─ rag_query.py        # 三期：RAG 知识库子菜单
+├─ web/                    # 四期：Streamlit Web 可视化界面（只调用 scripts/core，不改下层）
+│   ├─ app.py              # 界面入口（streamlit run web/app.py，线上同左）
+│   ├─ common.py           # 路径引导、题解元数据解析、终端输出捕获工具
+│   ├─ browse.py           # 笔记浏览与管理
+│   ├─ dashboard.py        # 刷题统计看板
+│   ├─ ai_page.py          # AI 增强可视化
+│   ├─ rag_page.py         # RAG 知识库问答
+│   └─ sync_page.py        # 一键同步与配置体检
 ├─ notes/
 │   ├─ daily/              # 每日打卡笔记（YYYY-MM-DD.md）
 │   └─ problems/           # 单题题解（NNNN-english-slug.md）
@@ -122,7 +137,7 @@ leetcode-notes-auto/
 
 ## 后续路线图
 
-- Web 界面：用 Streamlit 做简易网页界面，替代命令行；
+- Web 界面：✅ 已实现（四期 `web/` + Streamlit，本地 `streamlit run web/app.py`；线上：https://mengl-0-leetcode-notes-auto-webapp-jjgrdx.streamlit.app/）；
 - 代码沙箱：本地运行 Python/Go 样例，把运行结果写入笔记；
 - 导出功能：Markdown 笔记批量导出 PDF；
-- 统计看板：按题号/难度/日期统计刷题量，生成周报。
+- 统计看板：✅ 已实现（四期看板：难度/标签分布、趋势、进度、待复习 Top）；周报导出待实现。
